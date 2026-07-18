@@ -2,6 +2,17 @@
 
 A tiny, CSP-safe template engine for JavaScript. **~0.8KB min+gzip (~2KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
 
+[![NPM version](https://img.shields.io/npm/v/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
+[![Build Status](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml/badge.svg)](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml)
+[![NPM downloads](https://img.shields.io/npm/dm/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
+[![MIT license](https://img.shields.io/github/license/robinvdvleuten/sjabloon.svg)](https://github.com/robinvdvleuten/sjabloon/blob/main/LICENSE)
+
+<a href="https://webstronauts.com?utm_source=github&utm_medium=readme&utm_campaign=sjabloon">
+	<picture>
+		<img src="https://webstronauts.com/images/sponsored-by.svg" alt="Sponsored by The Webstronauts" width="200" height="65">
+	</picture>
+</a>
+
 *Sjabloon* is Dutch for "template". It renders text templates with full [xprsn](https://github.com/robinvdvleuten/xprsn) expressions inside every tag, without turning template text into JavaScript. There is no `eval` and no `new Function`, so it runs under a strict Content Security Policy where engines that compile templates to code cannot.
 
 ```js
