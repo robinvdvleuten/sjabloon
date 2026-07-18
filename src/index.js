@@ -19,7 +19,7 @@ const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
 const TAGS = /\{\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}\}|\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}/;
 
 // Shared parser state; parsing is synchronous so this is safe.
-let toks, i, fns, last, bound, names;
+let toks, i, fns, last, bound, nms;
 
 let err = msg => { throw SyntaxError(msg) };
 
@@ -27,7 +27,7 @@ let err = msg => { throw SyntaxError(msg) };
 // variables currently in scope — those belong to the template, not the caller.
 let cp = s => {
 	const e = compile(s, fns);
-	for (const n of e.names) bound.has(n) || names.add(n);
+	for (const n of e.names) bound.has(n) || nms.add(n);
 	return e;
 };
 
@@ -101,7 +101,7 @@ let parse = stops => {
 export function template(str, funcs) {
 	fns = funcs;
 	bound = new Set();
-	names = new Set();
+	nms = new Set();
 	toks = [];
 	const parts = String(str).split(TAGS);
 	for (let j = 0; j < parts.length; j += 7) {
@@ -123,7 +123,7 @@ export function template(str, funcs) {
 	const f = v => nodes.map(n => n(v || {})).join('');
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
 	// `[].concat(set)`, which wraps the Set instead of unpacking it.
-	f.names = Array.from(names);
+	f.names = Array.from(nms);
 	return f;
 }
 
