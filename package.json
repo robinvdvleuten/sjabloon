@@ -41,7 +41,7 @@
 		"handlebars"
 	],
 	"dependencies": {
-		"xprsn": "^0.1.0"
+		"xprsn": "^0.2.0"
 	},
 	"devDependencies": {
 		"microbundle": "^0.15.1",
