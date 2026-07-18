@@ -47,15 +47,20 @@ let parse = stops => {
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
 			const list = compile(m[1], fns), name = m[2], idx = m[3];
-			const body = parse(['/each']);
+			const body = parse(['#else', '/each']);
+			const empty = last === '#else' ? parse(['/each']) : [];
 			// Child scopes inherit the parent via the prototype chain, so
 			// outer variables stay visible inside the loop body.
-			nodes.push(v => pairs(list(v)).map(([item, key]) => {
-				const s = Object.create(v);
-				s[name] = item;
-				if (idx) s[idx] = key;
-				return body.map(n => n(s)).join('');
-			}).join(''));
+			nodes.push(v => {
+				const ps = pairs(list(v));
+				if (!ps.length) return empty.map(n => n(v)).join('');
+				return ps.map(([item, key]) => {
+					const s = Object.create(v);
+					s[name] = item;
+					if (idx) s[idx] = key;
+					return body.map(n => n(s)).join('');
+				}).join('');
+			});
 		} else if (t.tag[0] === '#' || t.tag[0] === '/') {
 			err('Unexpected {{' + t.tag + '}}');
 		} else {

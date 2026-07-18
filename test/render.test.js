@@ -64,6 +64,16 @@ test('each iterates objects as value, key', t => {
 	t.end();
 });
 
+test('each with else renders the empty branch', t => {
+	const tpl = '{{#each items as it}}<li>{{ it }}</li>{{#else}}<li>{{ emptyMsg }}</li>{{/each}}';
+	t.equal(render(tpl, { items: ['a'], emptyMsg: 'none' }), '<li>a</li>');
+	t.equal(render(tpl, { items: [], emptyMsg: 'none' }), '<li>none</li>', 'empty array');
+	t.equal(render(tpl, { emptyMsg: 'none' }), '<li>none</li>', 'missing list');
+	t.equal(render('{{#each o as v}}{{ v }}{{#else}}empty{{/each}}', { o: {} }), 'empty', 'empty object');
+	t.equal(render('{{#each xs as x}}{{ x }}{{/each}}', { xs: [] }), '', 'no else stays empty');
+	t.end();
+});
+
 test('each scopes inherit outer variables', t => {
 	t.equal(
 		render('{{#each items as it}}{{ prefix }}{{ it }} {{/each}}', { items: [1, 2], prefix: '#' }),

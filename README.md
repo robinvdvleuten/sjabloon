@@ -41,6 +41,7 @@ Shorthand for `template(str, functions)(values)`.
 | `{{#if expr}} … {{#elif expr}} … {{#else}} … {{/if}}` | Conditional block, with as many `{{#elif}}` links as you need |
 | `{{#each expr as item}} … {{/each}}` | Loop over an array or an object's values |
 | `{{#each expr as item, key}} … {{/each}}` | Second name binds the index (arrays) or the key (objects) |
+| `{{#each expr as item}} … {{#else}} … {{/each}}` | The `{{#else}}` branch renders when the collection is empty or missing |
 | `{{! anything }}` | Comment, removed from output |
 
 Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
