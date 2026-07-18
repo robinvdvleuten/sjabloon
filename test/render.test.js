@@ -87,6 +87,18 @@ test('each scopes inherit outer variables', t => {
 	t.end();
 });
 
+test('whitespace trimming', t => {
+	t.equal(render('a  {{- "x" }}  b'), 'ax  b', 'left trim only');
+	t.equal(render('a  {{ "x" -}}  b'), 'a  xb', 'right trim only');
+	t.equal(render('a\n\t{{- "x" -}}\n\tb'), 'axb', 'both sides, across newlines');
+	t.equal(render('a {{{- html -}}} b', { html: '<i>' }), 'a<i>b', 'raw tags trim too');
+	t.equal(render('<ul>\n{{#each xs as x -}}\n<li>{{ x }}</li>\n{{-/each}}\n</ul>', { xs: [1, 2] }),
+		'<ul>\n<li>1</li><li>2</li>\n</ul>', 'block and closing tags trim their own sides');
+	t.equal(render('{{ -n }}', { n: 5 }), '-5', 'space before a unary minus is not a trim marker');
+	t.equal(render('a  {{ "x" }}  b'), 'a  x  b', 'no dashes, no trimming');
+	t.end();
+});
+
 test('comments', t => {
 	t.equal(render('a{{! this disappears }}b'), 'ab');
 	t.end();
