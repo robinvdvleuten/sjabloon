@@ -10,7 +10,7 @@ Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling
 
 ## Architecture
 
-The entire implementation is `src/index.js` (~100 lines, one file by design). One regex splits the template into `[text, raw-tag, tag]` triplets; a recursive parser turns blocks into closures, and every expression inside a tag goes through xprsn's `compile`. `template(str)` returns a plain `(values) => string`. No AST, no code generation — same closure-compiler approach as xprsn, one level up.
+The entire implementation is `src/index.js` (~130 lines, one file by design). One regex splits the template into strides of 7 (`text, rawL, raw, rawR, tagL, tag, tagR` — the L/R groups are the `{{-`/`-}}` trim dashes, which must hug the braces so `{{ -price }}` stays a unary minus). A recursive parser turns blocks into closures (`#if`/`#elif` chains recurse via `branch()`), and every expression goes through `cp()`, which wraps xprsn's `compile` and collects free variables. `template(str)` returns a plain `(values) => string` carrying `.names`. No AST, no code generation — same closure-compiler approach as xprsn, one level up.
 
 Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is synchronous so this is safe.
 
@@ -28,6 +28,10 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 - `null`/`undefined` interpolate as empty strings (template-friendly, unlike raw xprsn).
 - Compile-time `SyntaxError` for malformed/unclosed tags and bad expressions; runtime `TypeError` comes from xprsn's guards.
 - Loop variables shadow outer names; nested `#each` shadows correctly.
+- `#each` walks `[value, key]` pairs: array indexes or own object keys; the second `as` binding is index-or-key. Nullish/non-iterable collections iterate zero times, and an empty collection renders the `{{#else}}` branch (in parent scope) if present.
+- `#if`/`#elif`/`#else` chains; `#elif` requires a space and an expression.
+- Whitespace trimming is per side and only when the dash hugs the brace; it eats all adjacent whitespace including newlines.
+- `template(...).names` = free variables across all expressions, minus loop-bound names in scope; the else-branch of `#each` is outside the loop scope. Use `Array.from` (never a spread) to turn the Set into the array — the bundler's transpile breaks Set spreads.
 
 ## Conventions
 
