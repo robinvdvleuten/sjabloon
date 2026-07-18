@@ -119,6 +119,28 @@ test('compile once, render many', t => {
 	t.end();
 });
 
+test('compiled templates expose their names', t => {
+	t.deepEqual(template('{{ a }} and {{ b.c }}').names, ['a', 'b']);
+	t.deepEqual(
+		template('{{ title }}{{#each items as it, i}}{{ i }}:{{ it.name }} vs {{ other }}{{/each}}').names,
+		['title', 'items', 'other'],
+		'loop variables are excluded'
+	);
+	t.deepEqual(
+		template('{{ x }}{{#each xs as x}}{{ x }}{{/each}}{{ y }}').names,
+		['x', 'xs', 'y'],
+		'a name used free outside the loop still counts'
+	);
+	t.deepEqual(
+		template('{{#each xs as it}}{{ it }}{{#else}}{{ fallback }}{{/each}}').names,
+		['xs', 'fallback'],
+		'the empty branch is outside the loop scope'
+	);
+	t.deepEqual(template('{{#if f(n)}}x{{/if}}', { f: v => v }).names, ['n'], 'functions are not names');
+	t.deepEqual(template('static only').names, []);
+	t.end();
+});
+
 test('full template', t => {
 	const out = render(
 		'<h1>{{ user.name }}</h1><ul>{{#each items as it}}<li>{{ it.name }}: {{ it.price * it.qty }}{{#if it.qty > 1}} ({{ it.qty }}x){{/if}}</li>{{/each}}</ul>{{#if total >= 100}}<p>Free shipping</p>{{#else}}<p>{{ fmt(shipping) }}</p>{{/if}}',

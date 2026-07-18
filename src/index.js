@@ -19,14 +19,22 @@ const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
 const TAGS = /\{\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}\}|\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}/;
 
 // Shared parser state; parsing is synchronous so this is safe.
-let toks, i, fns, last;
+let toks, i, fns, last, bound, names;
 
 let err = msg => { throw SyntaxError(msg) };
+
+// Compile one expression and collect its free variables, minus the loop
+// variables currently in scope — those belong to the template, not the caller.
+let cp = s => {
+	const e = compile(s, fns);
+	for (const n of e.names) bound.has(n) || names.add(n);
+	return e;
+};
 
 // One `#if`/`#elif` link: parse its branch, then recurse on the chain tail.
 let branch = cond => {
 	const then = parse(['#elif', '#else', '/if']);
-	const els = last.startsWith('#elif ') ? [branch(compile(last.slice(6), fns))]
+	const els = last.startsWith('#elif ') ? [branch(cp(last.slice(6)))]
 		: last === '#else' ? parse(['/if'])
 		: [];
 	return v => (cond(v) ? then : els).map(n => n(v)).join('');
@@ -38,18 +46,23 @@ let parse = stops => {
 		if (t.text != null) {
 			nodes.push((s => () => s)(t.text));
 		} else if (t.raw != null) {
-			nodes.push((e => v => String(e(v) ?? ''))(compile(t.raw, fns)));
+			nodes.push((e => v => String(e(v) ?? ''))(cp(t.raw)));
 		} else if (stops.includes(t.tag.split(' ')[0])) {
 			last = t.tag;
 			return nodes;
 		} else if (t.tag[0] === '!') {
 			// comment
 		} else if (t.tag.startsWith('#if ')) {
-			nodes.push(branch(compile(t.tag.slice(4), fns)));
+			nodes.push(branch(cp(t.tag.slice(4))));
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
-			const list = compile(m[1], fns), name = m[2], idx = m[3];
+			const list = cp(m[1]), name = m[2], idx = m[3];
+			const had = [bound.has(name), idx && bound.has(idx)];
+			bound.add(name);
+			idx && bound.add(idx);
 			const body = parse(['#else', '/each']);
+			had[0] || bound.delete(name);
+			idx && !had[1] && bound.delete(idx);
 			const empty = last === '#else' ? parse(['/each']) : [];
 			// Child scopes inherit the parent via the prototype chain, so
 			// outer variables stay visible inside the loop body.
@@ -66,7 +79,7 @@ let parse = stops => {
 		} else if (t.tag[0] === '#' || t.tag[0] === '/') {
 			err('Unexpected {{' + t.tag + '}}');
 		} else {
-			nodes.push((e => v => esc(e(v) ?? ''))(compile(t.tag, fns)));
+			nodes.push((e => v => esc(e(v) ?? ''))(cp(t.tag)));
 		}
 	}
 	stops.length && err('Missing {{' + stops[stops.length - 1] + '}}');
@@ -76,13 +89,19 @@ let parse = stops => {
 /**
  * Compile a template once, render it many times.
  *
+ * The returned renderer exposes `names`: the variables the template reads
+ * from your values, deduplicated. Loop variables the template introduces
+ * are not included.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
- * @returns {(values?: Record<string, any>) => string} Renderer for the compiled template.
+ * @returns {{(values?: Record<string, any>): string, names: string[]}} Renderer for the compiled template.
  * @throws {SyntaxError} On malformed tags, unclosed blocks, or bad expressions.
  */
 export function template(str, funcs) {
 	fns = funcs;
+	bound = new Set();
+	names = new Set();
 	toks = [];
 	const parts = String(str).split(TAGS);
 	for (let j = 0; j < parts.length; j += 7) {
@@ -101,7 +120,11 @@ export function template(str, funcs) {
 	});
 	i = 0;
 	const nodes = parse([]);
-	return v => nodes.map(n => n(v || {})).join('');
+	const f = v => nodes.map(n => n(v || {})).join('');
+	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
+	// `[].concat(set)`, which wraps the Set instead of unpacking it.
+	f.names = Array.from(names);
+	return f;
 }
 
 /**
