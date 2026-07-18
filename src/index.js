@@ -8,6 +8,11 @@ import { compile } from 'xprsn';
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
 
+// What `#each` walks: [value, key] pairs — array indexes or own object keys.
+const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
+	: lv && typeof lv === 'object' ? Object.keys(lv).map(k => [lv[k], k])
+	: [];
+
 // Split into [text, raw-tag, tag, text, raw-tag, tag, ...] triplets.
 const TAGS = /\{\{\{\s*([\s\S]*?)\s*\}\}\}|\{\{\s*([\s\S]*?)\s*\}\}/;
 
@@ -45,10 +50,10 @@ let parse = stops => {
 			const body = parse(['/each']);
 			// Child scopes inherit the parent via the prototype chain, so
 			// outer variables stay visible inside the loop body.
-			nodes.push(v => list(v).map((item, j) => {
+			nodes.push(v => pairs(list(v)).map(([item, key]) => {
 				const s = Object.create(v);
 				s[name] = item;
-				if (idx) s[idx] = j;
+				if (idx) s[idx] = key;
 				return body.map(n => n(s)).join('');
 			}).join(''));
 		} else if (t.tag[0] === '#' || t.tag[0] === '/') {

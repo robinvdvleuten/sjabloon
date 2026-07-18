@@ -53,6 +53,17 @@ test('each blocks', t => {
 	t.end();
 });
 
+test('each iterates objects as value, key', t => {
+	t.equal(
+		render('{{#each prices as price, sku}}{{ sku }}={{ price }};{{/each}}', { prices: { a1: 4, b2: 9 } }),
+		'a1=4;b2=9;'
+	);
+	t.equal(render('{{#each obj as val}}{{ val }} {{/each}}', { obj: { x: 1, y: 2 } }), '1 2 ', 'key binding is optional');
+	t.equal(render('[{{#each list as it}}x{{/each}}]', { list: null }), '[]', 'nullish iterates zero times');
+	t.equal(render('[{{#each list as it}}x{{/each}}]', { list: 'nope' }), '[]', 'non-iterable iterates zero times');
+	t.end();
+});
+
 test('each scopes inherit outer variables', t => {
 	t.equal(
 		render('{{#each items as it}}{{ prefix }}{{ it }} {{/each}}', { items: [1, 2], prefix: '#' }),
