@@ -3,6 +3,7 @@ import { template } from '../src/index.js';
 
 test('unclosed blocks', t => {
 	t.throws(() => template('{{#if ok}}yes'), /Missing \{\{\/if\}\}/);
+	t.throws(() => template('{{#if a}}x{{#elif b}}y'), /Missing \{\{\/if\}\}/);
 	t.throws(() => template('{{#each items as it}}x'), /Missing \{\{\/each\}\}/);
 	t.end();
 });

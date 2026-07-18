@@ -33,6 +33,18 @@ test('if blocks', t => {
 	t.end();
 });
 
+test('elif chains', t => {
+	const tpl = '{{#if n > 10}}big{{#elif n > 5}}mid{{#elif n > 0}}small{{#else}}none{{/if}}';
+	t.equal(render(tpl, { n: 20 }), 'big');
+	t.equal(render(tpl, { n: 7 }), 'mid');
+	t.equal(render(tpl, { n: 2 }), 'small');
+	t.equal(render(tpl, { n: 0 }), 'none');
+	t.equal(render('{{#if a}}x{{#elif b}}y{{/if}}', { b: true }), 'y', 'elif without else');
+	t.equal(render('{{#if a}}x{{#elif b}}y{{/if}}', {}), '', 'no branch matches');
+	t.equal(render('{{#if a}}{{#if b}}1{{#elif c}}2{{/if}}{{#elif d}}3{{/if}}', { a: true, c: true }), '2', 'nested');
+	t.end();
+});
+
 test('each blocks', t => {
 	t.equal(render('{{#each items as it}}[{{ it }}]{{/each}}', { items: [1, 2, 3] }), '[1][2][3]');
 	t.equal(render('{{#each items as it, i }}{{ i }}:{{ it }} {{/each}}', { items: ['a', 'b'] }), '0:a 1:b ');

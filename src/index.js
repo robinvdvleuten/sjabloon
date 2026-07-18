@@ -16,6 +16,15 @@ let toks, i, fns, last;
 
 let err = msg => { throw SyntaxError(msg) };
 
+// One `#if`/`#elif` link: parse its branch, then recurse on the chain tail.
+let branch = cond => {
+	const then = parse(['#elif', '#else', '/if']);
+	const els = last.startsWith('#elif ') ? [branch(compile(last.slice(6), fns))]
+		: last === '#else' ? parse(['/if'])
+		: [];
+	return v => (cond(v) ? then : els).map(n => n(v)).join('');
+};
+
 let parse = stops => {
 	const nodes = [];
 	for (let t; (t = toks[i++]); ) {
@@ -29,10 +38,7 @@ let parse = stops => {
 		} else if (t.tag[0] === '!') {
 			// comment
 		} else if (t.tag.startsWith('#if ')) {
-			const cond = compile(t.tag.slice(4), fns);
-			const then = parse(['#else', '/if']);
-			const els = last === '#else' ? parse(['/if']) : [];
-			nodes.push(v => (cond(v) ? then : els).map(n => n(v)).join(''));
+			nodes.push(branch(compile(t.tag.slice(4), fns)));
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
 			const list = compile(m[1], fns), name = m[2], idx = m[3];

@@ -38,7 +38,7 @@ Shorthand for `template(str, functions)(values)`.
 | --- | --- |
 | `{{ expr }}` | Interpolate an expression, HTML-escaped |
 | `{{{ expr }}}` | Interpolate without escaping |
-| `{{#if expr}} … {{#else}} … {{/if}}` | Conditional block |
+| `{{#if expr}} … {{#elif expr}} … {{#else}} … {{/if}}` | Conditional block, with as many `{{#elif}}` links as you need |
 | `{{#each expr as item}} … {{/each}}` | Loop block |
 | `{{#each expr as item, i}} … {{/each}}` | Loop block with index |
 | `{{! anything }}` | Comment, removed from output |
