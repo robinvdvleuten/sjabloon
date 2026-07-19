@@ -87,6 +87,37 @@ test('each scopes inherit outer variables', t => {
 	t.end();
 });
 
+test('$ (root) and @ (current item) scope anchors', t => {
+	t.equal(
+		render('{{#each rows as r}}{{ $.company }}:{{ @.n }};{{/each}}', { company: 'ACME', rows: [{ n: 1 }, { n: 2 }] }),
+		'ACME:1;ACME:2;',
+		'$ reaches the root inside a loop, @ is the current item'
+	);
+	t.equal(
+		render('{{#each items as company}}{{ company }}={{ $.company }} {{/each}}', { company: 'ROOT', items: ['a', 'b'] }),
+		'a=ROOT b=ROOT ',
+		'$ is immune to shadowing by a loop variable of the same name'
+	);
+	t.equal(
+		render('{{#each rows as row}}{{#each row as cell}}{{ @ }}{{/each}}|{{/each}}', { rows: [['x', 'y'], ['z']] }),
+		'xy|z|',
+		'@ re-points to the innermost item in nested loops'
+	);
+	t.equal(render('{{ $.title }}/{{ @.title }}', { title: 'T' }), 'T/T', 'both anchors point at the values at the root');
+	t.throws(() => render('{{ $.constructor }}', {}), TypeError, 'anchors still route through the xprsn guard');
+	t.end();
+});
+
+test('anchors are not reported as names and do not mutate values', t => {
+	t.deepEqual(template('{{ $.a }}{{#each xs as x}}{{ @.b }}{{/each}}').names, ['xs'], '$ and @ are excluded from names');
+	const values = { title: 'T', rows: [{ n: 1 }] };
+	render('{{ $.title }}{{#each rows as r}}{{ @.n }}{{/each}}', values);
+	t.notOk('$' in values, '$ is not written to the values object');
+	t.notOk('@' in values, '@ is not written to the values object');
+	t.deepEqual(values, { title: 'T', rows: [{ n: 1 }] }, 'values come back unchanged');
+	t.end();
+});
+
 test('whitespace trimming', t => {
 	t.equal(render('a  {{- "x" }}  b'), 'ax  b', 'left trim only');
 	t.equal(render('a  {{ "x" -}}  b'), 'a  xb', 'right trim only');

@@ -68,6 +68,18 @@ Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#sy
 
 Loop bodies see the loop variable plus everything from the outer scope. A nested loop can reuse an outer name and shadow it for its own body. The engine sets loop variables on a child scope, so your values object comes back exactly as you passed it in.
 
+Two anchors are always in scope: `$` is the root values, and `@` is the current `{{#each}}` item (the root outside any loop). Deep in nested loops they let you name the level you mean instead of relying on shadowing: `$.company` always reaches the top, and `@.total` is the item the innermost loop is on.
+
+```js
+render(
+  '{{#each regions as company}}{{ company }} of {{ $.company }}: {{#each rows as r}}{{ @.n }} {{/each}}{{/each}}',
+  { company: 'ACME', regions: ['North', 'South'], rows: [{ n: 1 }, { n: 2 }] }
+);
+// => 'North of ACME: 1 2 South of ACME: 1 2 '
+```
+
+The loop variable `company` shadows the root's `company` for a bare name, but `$.company` still reaches `'ACME'`. Anchors never count as `names`, and reading a blocked key through one (`$.constructor`) throws, same as anywhere else.
+
 ## Content Security Policy
 
 sjabloon works under `script-src 'self'` with no `unsafe-eval`. Templates parse into a tree of closures that call other closures; xprsn compiles the expressions the same way. The test suite runs under `node --disallow-code-generation-from-strings`, which throws on any string-to-code construct exactly like a strict CSP does.

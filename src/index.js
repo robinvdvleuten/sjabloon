@@ -68,7 +68,8 @@ let parse = stops => {
 			idx && !had[1] && bound.delete(idx);
 			const empty = last === '#else' ? parse(['/each']) : [];
 			// Child scopes inherit the parent via the prototype chain, so
-			// outer variables stay visible inside the loop body.
+			// outer variables stay visible inside the loop body. `@` re-points
+			// to the current item at each level; `$` (root) rides the chain.
 			nodes.push(v => {
 				const ps = pairs(list(v));
 				if (!ps.length) return empty.map(n => n(v)).join('');
@@ -76,6 +77,7 @@ let parse = stops => {
 					const s = Object.create(v);
 					s[name] = item;
 					if (idx) s[idx] = key;
+					s['@'] = item;
 					return body.map(n => n(s)).join('');
 				}).join('');
 			});
@@ -97,6 +99,11 @@ let parse = stops => {
  * not included. It also exposes `functions`: the registry functions the
  * template calls, deduplicated.
  *
+ * Two anchors are always in scope: `$` is the root values, and `@` is the
+ * current `#each` item (the root outside any loop). They let a nested loop
+ * reach the root (`$.company`) or the current item (`@.total`) explicitly,
+ * past any shadowing. Neither counts as a `name`.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
  * @returns {{(values?: Record<string, any>): string, names: string[], functions: string[]}} Renderer for the compiled template.
@@ -104,7 +111,9 @@ let parse = stops => {
  */
 export function template(str, funcs) {
 	fns = funcs;
-	bound = new Set();
+	// `$` (root) and `@` (current item) are engine-bound anchors, always in
+	// scope, so they never count as caller-supplied `names`.
+	bound = new Set(['$', '@']);
 	nms = new Set();
 	fnms = new Set();
 	toks = [];
@@ -125,7 +134,14 @@ export function template(str, funcs) {
 	});
 	i = 0;
 	const nodes = parse([]);
-	const f = v => nodes.map(n => n(v || {})).join('');
+	// Wrap the values in a root scope carrying the anchors, without mutating
+	// what the caller passed: `$` and `@` both point at the root here.
+	const f = v => {
+		v = v || {};
+		const r = Object.create(v);
+		r['$'] = r['@'] = v;
+		return nodes.map(n => n(r)).join('');
+	};
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
 	// `[].concat(set)`, which wraps the Set instead of unpacking it.
 	f.names = Array.from(nms);

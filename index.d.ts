@@ -6,6 +6,11 @@
  * not included. It also exposes `functions`: the registry functions the
  * template calls, deduplicated.
  *
+ * Two anchors are always in scope: `$` is the root values, and `@` is the
+ * current `#each` item (the root outside any loop). They let a nested loop
+ * reach the root (`$.company`) or the current item (`@.total`) explicitly,
+ * past any shadowing. Neither counts as a `name`.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
  * @returns {{(values?: Record<string, any>): string, names: string[], functions: string[]}} Renderer for the compiled template.
