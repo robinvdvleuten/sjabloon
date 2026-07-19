@@ -31,7 +31,8 @@
 	"scripts": {
 		"build": "microbundle --no-sourcemap",
 		"prepublishOnly": "npm run build",
-		"test": "node --disallow-code-generation-from-strings node_modules/tape/bin/tape test/*.test.js"
+		"test": "node --disallow-code-generation-from-strings node_modules/tape/bin/tape test/*.test.js",
+		"bench": "node bench/index.js"
 	},
 	"keywords": [
 		"template",

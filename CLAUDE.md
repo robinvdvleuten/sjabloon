@@ -7,6 +7,7 @@ Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling
 - `npm test` — tape suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
 - `npm run build` — microbundle → `dist/` (ESM/CJS/UMD) + `index.d.ts` from JSDoc. Prints min+gzip sizes.
 - Run a single suite: `npx tape test/render.test.js`
+- `npm run bench` — zero-dependency micro-benchmarks in `bench/`, run against `src/`. Measures template compile and render throughput separately (compile-once, render-many). `bench/` is not in `files`, so it is never published.
 
 ## Architecture
 
