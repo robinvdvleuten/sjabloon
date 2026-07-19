@@ -24,6 +24,21 @@ let toks, i, fns, last, bound, nms, fnms;
 
 let err = msg => { throw SyntaxError(msg) };
 
+// Render a list of nodes against a scope.
+let run = (nodes, v) => nodes.map(n => n(v)).join('');
+
+// A leaf interpolation node: compile `src`, render nullish as '', apply `wrap`
+// (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form).
+let interp = (src, wrap) => (e => v => wrap(e(v) ?? ''))(cp(src));
+
+// Bind `names` for a block body; returns a restore that unbinds only the names
+// this block introduced, leaving an outer scope's bindings in place.
+let scope = (...names) => {
+	const fresh = names.filter(n => n && !bound.has(n));
+	fresh.forEach(n => bound.add(n));
+	return () => fresh.forEach(n => bound.delete(n));
+};
+
 // Compile one expression and collect its free variables (minus the loop
 // variables currently in scope, which belong to the template) and the registry
 // functions it calls.
@@ -40,7 +55,7 @@ let branch = cond => {
 	const els = last.startsWith('#elif ') ? [branch(cp(last.slice(6)))]
 		: last === '#else' ? parse(['/if'])
 		: [];
-	return v => (cond(v) ? then : els).map(n => n(v)).join('');
+	return v => run(cond(v) ? then : els, v);
 };
 
 let parse = stops => {
@@ -49,7 +64,7 @@ let parse = stops => {
 		if (t.text != null) {
 			nodes.push((s => () => s)(t.text));
 		} else if (t.raw != null) {
-			nodes.push((e => v => String(e(v) ?? ''))(cp(t.raw)));
+			nodes.push(interp(t.raw, String));
 		} else if (stops.includes(t.tag.split(' ')[0])) {
 			last = t.tag;
 			return nodes;
@@ -60,16 +75,11 @@ let parse = stops => {
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
 			const list = cp(m[1]), name = m[2], idx = m[3];
-			// `loop` is engine-bound inside the body too, so exclude it from
-			// names while there, restoring an outer loop's binding after.
-			const had = [bound.has(name), idx && bound.has(idx), bound.has('loop')];
-			bound.add(name);
-			idx && bound.add(idx);
-			bound.add('loop');
+			// `name`, `idx`, and `loop` are engine-bound inside the body, so
+			// exclude them from names there and restore outer bindings after.
+			const restore = scope(name, idx, 'loop');
 			const body = parse(['#else', '/each']);
-			had[0] || bound.delete(name);
-			idx && !had[1] && bound.delete(idx);
-			had[2] || bound.delete('loop');
+			restore();
 			const empty = last === '#else' ? parse(['/each']) : [];
 			// Child scopes inherit the parent via the prototype chain, so outer
 			// variables stay visible inside the loop body. `@` re-points to the
@@ -77,20 +87,20 @@ let parse = stops => {
 			// carries the iteration metadata (index/first/last/length).
 			nodes.push(v => {
 				const ps = pairs(list(v));
-				if (!ps.length) return empty.map(n => n(v)).join('');
+				if (!ps.length) return run(empty, v);
 				return ps.map(([item, key], j) => {
 					const s = Object.create(v);
 					s[name] = item;
 					if (idx) s[idx] = key;
 					s['@'] = item;
 					s.loop = { index: j + 1, index0: j, first: !j, last: j === ps.length - 1, length: ps.length };
-					return body.map(n => n(s)).join('');
+					return run(body, s);
 				}).join('');
 			});
 		} else if (t.tag[0] === '#' || t.tag[0] === '/') {
 			err('Unexpected {{' + t.tag + '}}');
 		} else {
-			nodes.push((e => v => esc(e(v) ?? ''))(cp(t.tag)));
+			nodes.push(interp(t.tag, esc));
 		}
 	}
 	stops.length && err('Missing {{' + stops[stops.length - 1] + '}}');
@@ -146,7 +156,7 @@ export function template(str, funcs) {
 		v = v || {};
 		const r = Object.create(v);
 		r['$'] = r['@'] = v;
-		return nodes.map(n => n(r)).join('');
+		return run(nodes, r);
 	};
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
 	// `[].concat(set)`, which wraps the Set instead of unpacking it.
