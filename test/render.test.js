@@ -108,6 +108,41 @@ test('$ (root) and @ (current item) scope anchors', t => {
 	t.end();
 });
 
+test('#each exposes loop metadata', t => {
+	t.equal(
+		render('{{#each xs as x}}{{ x }}{{#if not loop.last}}, {{/if}}{{/each}}', { xs: ['a', 'b', 'c'] }),
+		'a, b, c',
+		'loop.last drives a separator'
+	);
+	t.equal(
+		render('{{#each xs as x}}{{ loop.index }}/{{ loop.length }}:{{ x }} {{/each}}', { xs: ['a', 'b'] }),
+		'1/2:a 2/2:b ',
+		'1-based index and length'
+	);
+	t.equal(
+		render('{{#each xs as x}}{{#if loop.first}}[{{/if}}{{ x }}{{#if loop.last}}]{{/if}}{{/each}}', { xs: [1, 2, 3] }),
+		'[123]',
+		'first and last'
+	);
+	t.equal(
+		render('{{#each o as v}}{{ loop.index0 }}={{ v }};{{/each}}', { o: { a: 10, b: 20 } }),
+		'0=10;1=20;',
+		'index0 over object entries'
+	);
+	t.equal(
+		render('{{#each rows as r}}{{#each r as c}}{{ loop.index }}{{/each}}|{{/each}}', { rows: [['x', 'y'], ['z']] }),
+		'12|1|',
+		'nested loops get independent metadata'
+	);
+	t.end();
+});
+
+test('loop is a name only outside a loop', t => {
+	t.deepEqual(template('{{#each xs as x}}{{ loop.index }}{{/each}}').names, ['xs'], 'engine-bound inside a loop');
+	t.deepEqual(template('{{ loop }}').names, ['loop'], 'an ordinary name outside a loop');
+	t.end();
+});
+
 test('anchors are not reported as names and do not mutate values', t => {
 	t.deepEqual(template('{{ $.a }}{{#each xs as x}}{{ @.b }}{{/each}}').names, ['xs'], '$ and @ are excluded from names');
 	const values = { title: 'T', rows: [{ n: 1 }] };

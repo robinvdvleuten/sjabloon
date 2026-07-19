@@ -61,14 +61,22 @@ Shorthand for `template(str, functions)(values)`.
 | `{{#each expr as item}} … {{/each}}` | Loop over an array or an object's values |
 | `{{#each expr as item, key}} … {{/each}}` | Second name binds the index (arrays) or the key (objects) |
 | `{{#each expr as item}} … {{#else}} … {{/each}}` | The `{{#else}}` branch renders when the collection is empty or missing |
+| `{{ loop.last }}` (inside `{{#each}}`) | Iteration metadata: `index` (1-based), `index0`, `first`, `last`, `length` |
 | `{{! anything }}` | Comment, removed from output |
 | `{{- expr -}}` | A dash hugging either brace trims the whitespace on that side, newlines included; works on every tag form |
 
 Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
 
-Loop bodies see the loop variable plus everything from the outer scope. A nested loop can reuse an outer name and shadow it for its own body. The engine sets loop variables on a child scope, so your values object comes back exactly as you passed it in.
+A loop body sees its loop variable plus the outer scope; reusing an outer name shadows it only inside that body. The engine keeps loop variables on a child scope, so the values you pass are never mutated.
 
-Two anchors are always in scope: `$` is the root values, and `@` is the current `{{#each}}` item (the root outside any loop). Deep in nested loops they let you name the level you mean instead of relying on shadowing: `$.company` always reaches the top, and `@.total` is the item the innermost loop is on.
+Inside `{{#each}}`, a `loop` object holds the iteration state: `index` (1-based), `index0`, `first`, `last`, and `length`. Use `loop.last` for separators and trailing borders, or `loop.index` with `loop.length` for "row X of Y". Each nested loop gets its own.
+
+```js
+render('{{#each xs as x}}{{ x }}{{#if not loop.last}}, {{/if}}{{/each}}', { xs: ['a', 'b', 'c'] });
+// => 'a, b, c'
+```
+
+Two anchors are always in scope: `$` is the root values and `@` is the current `{{#each}}` item (the root outside a loop). They let a nested body name the level it means instead of leaning on shadowing: `$.company` reaches the top, and `@.total` is whatever the innermost loop sits on.
 
 ```js
 render(
@@ -78,7 +86,7 @@ render(
 // => 'North of ACME: 1 2 South of ACME: 1 2 '
 ```
 
-The loop variable `company` shadows the root's `company` for a bare name, but `$.company` still reaches `'ACME'`. Anchors never count as `names`, and reading a blocked key through one (`$.constructor`) throws, same as anywhere else.
+Here the loop variable `company` shadows the root's for a bare name, but `$.company` still returns `'ACME'`. Anchors never count as `names`, and a blocked key through one (`$.constructor`) throws like anywhere else.
 
 ## Content Security Policy
 

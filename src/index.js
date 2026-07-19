@@ -60,24 +60,30 @@ let parse = stops => {
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
 			const list = cp(m[1]), name = m[2], idx = m[3];
-			const had = [bound.has(name), idx && bound.has(idx)];
+			// `loop` is engine-bound inside the body too, so exclude it from
+			// names while there, restoring an outer loop's binding after.
+			const had = [bound.has(name), idx && bound.has(idx), bound.has('loop')];
 			bound.add(name);
 			idx && bound.add(idx);
+			bound.add('loop');
 			const body = parse(['#else', '/each']);
 			had[0] || bound.delete(name);
 			idx && !had[1] && bound.delete(idx);
+			had[2] || bound.delete('loop');
 			const empty = last === '#else' ? parse(['/each']) : [];
-			// Child scopes inherit the parent via the prototype chain, so
-			// outer variables stay visible inside the loop body. `@` re-points
-			// to the current item at each level; `$` (root) rides the chain.
+			// Child scopes inherit the parent via the prototype chain, so outer
+			// variables stay visible inside the loop body. `@` re-points to the
+			// current item at each level, `$` (root) rides the chain, and `loop`
+			// carries the iteration metadata (index/first/last/length).
 			nodes.push(v => {
 				const ps = pairs(list(v));
 				if (!ps.length) return empty.map(n => n(v)).join('');
-				return ps.map(([item, key]) => {
+				return ps.map(([item, key], j) => {
 					const s = Object.create(v);
 					s[name] = item;
 					if (idx) s[idx] = key;
 					s['@'] = item;
+					s.loop = { index: j + 1, index0: j, first: !j, last: j === ps.length - 1, length: ps.length };
 					return body.map(n => n(s)).join('');
 				}).join('');
 			});

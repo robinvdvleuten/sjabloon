@@ -29,6 +29,8 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 - Compile-time `SyntaxError` for malformed/unclosed tags and bad expressions; runtime `TypeError` comes from xprsn's guards.
 - Loop variables shadow outer names; nested `#each` shadows correctly.
 - `#each` walks `[value, key]` pairs: array indexes or own object keys; the second `as` binding is index-or-key. Nullish/non-iterable collections iterate zero times, and an empty collection renders the `{{#else}}` branch (in parent scope) if present.
+- Two scope anchors are always bound (in the root wrapper, so the caller's values object is never mutated): `$` = root values, `@` = current `#each` item (root outside any loop). Each `#each` re-points `@` on its child scope. Both are pre-seeded into `bound`, so they never appear in `names`.
+- Inside `#each`, `loop` = `{ index (1-based), index0, first, last, length }` on the child scope. `loop` is bound-scoped like the loop variables (added to `bound` for the body, restored after), so it counts as a name only when used outside a loop. Nested loops each set their own `loop`/`@`.
 - `#if`/`#elif`/`#else` chains; `#elif` requires a space and an expression.
 - Whitespace trimming is per side and only when the dash hugs the brace; it eats all adjacent whitespace including newlines.
 - `template(...).names` = free variables across all expressions, minus loop-bound names in scope; the else-branch of `#each` is outside the loop scope. `template(...).functions` = the registry functions called across all expressions, deduplicated (both aggregate xprsn's per-expression `names`/`functions` in `cp()`). Use `Array.from` (never a spread) to turn the Sets into arrays — the bundler's transpile breaks Set spreads.
