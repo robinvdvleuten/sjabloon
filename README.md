@@ -37,7 +37,15 @@ render(
 
 ### `template(str, functions?)`
 
-Compiles the template and returns a renderer `(values?) => string`. Malformed tags, unclosed blocks, and invalid expressions throw a `SyntaxError` at compile time.
+Compiles the template and returns a renderer `(values?, scope?) => string`. Malformed tags, unclosed blocks, and invalid expressions throw a `SyntaxError` at compile time.
+
+The anchors `$` (root) and `@` (current `{{#each}}` item) work as [described below](#syntax) with no extra arguments — at the root, before any loop, both point at `values`. If you're embedding sjabloon under an engine with its own scope model, pass `{ root, item }` as the second argument to seed the two root anchors from distinct objects: `$` becomes `root` and `@` becomes `item`. Omit `item` and `@` stays unbound at the root, so reading `@.x` throws where there is no current item. Either way, `{{#each}}` still re-points `@` to the current item inside its body.
+
+```js
+const tpl = template('{{ $.report }} — {{ @.row }}');
+tpl(base, { root: reportRoot, item: currentRow }); // $ = reportRoot, @ = currentRow
+tpl(base, { root: reportRoot });                   // no item → @.x throws
+```
 
 The renderer also carries `names` (every variable the template reads from your values, loop variables excluded) and `functions` (the registry functions it calls, methods excluded), both deduplicated. Check a stored template against your data model and its allowed functions before you render it, or fetch only the fields it needs.
 

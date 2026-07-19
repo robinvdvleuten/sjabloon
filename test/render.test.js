@@ -153,6 +153,40 @@ test('anchors are not reported as names and do not mutate values', t => {
 	t.end();
 });
 
+test('{ root, item } overrides the $ and @ anchors', t => {
+	t.equal(
+		template('{{ $.a }}/{{ @.a }}')({}, { root: { a: 'R' }, item: { a: 'I' } }),
+		'R/I',
+		'$ and @ point at distinct injected objects'
+	);
+	t.equal(
+		template('{{ $.y }}')({}, { root: { y: 'Z' } }),
+		'Z',
+		'$ resolves against the injected root'
+	);
+	t.throws(
+		() => template('{{ @.x }}')({}, { root: {} }),
+		TypeError,
+		'omitting item leaves @ unbound, so @.x throws'
+	);
+	t.equal(
+		template('{{#each $.rows as r}}{{ @.n }};{{/each}}')({}, { root: { rows: [{ n: 1 }, { n: 2 }] } }),
+		'1;2;',
+		'#each re-points @ to the current item, not the injected root'
+	);
+	t.end();
+});
+
+test('{ root, item } render does not mutate the passed objects', t => {
+	const values = {}, root = { title: 'T' }, item = { n: 1 };
+	template('{{ $.title }}/{{ @.n }}')(values, { root, item });
+	t.notOk('$' in values, '$ is not written to the values object');
+	t.notOk('@' in values, '@ is not written to the values object');
+	t.deepEqual(root, { title: 'T' }, 'root comes back unchanged');
+	t.deepEqual(item, { n: 1 }, 'item comes back unchanged');
+	t.end();
+});
+
 test('whitespace trimming', t => {
 	t.equal(render('a  {{- "x" }}  b'), 'ax  b', 'left trim only');
 	t.equal(render('a  {{ "x" -}}  b'), 'a  xb', 'right trim only');

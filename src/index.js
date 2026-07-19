@@ -120,9 +120,14 @@ let parse = stops => {
  * reach the root (`$.company`) or the current item (`@.total`) explicitly,
  * past any shadowing. Neither counts as a `name`.
  *
+ * An embedder with its own scope model can override the anchors per render by
+ * passing `{ root, item }` as the renderer's second argument: `$` becomes
+ * `root` and `@` becomes `item` (two distinct objects). Omit `item` to leave
+ * `@` unbound, so reading `@.x` throws through xprsn's guard.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
- * @returns {{(values?: Record<string, any>): string, names: string[], functions: string[]}} Renderer for the compiled template.
+ * @returns {{(values?: Record<string, any>, scope?: { root?: any, item?: any }): string, names: string[], functions: string[]}} Renderer for the compiled template.
  * @throws {SyntaxError} On malformed tags, unclosed blocks, or bad expressions.
  */
 export function template(str, funcs) {
@@ -151,11 +156,17 @@ export function template(str, funcs) {
 	i = 0;
 	const nodes = parse([]);
 	// Wrap the values in a root scope carrying the anchors, without mutating
-	// what the caller passed: `$` and `@` both point at the root here.
-	const f = v => {
+	// what the caller passed: by default `$` and `@` both point at the root.
+	// An embedder can override the anchors with a `{ root, item }` second arg:
+	// `$` = root, `@` = item (distinct objects). Omitting `item` leaves `@`
+	// unbound, so `@.x` throws through xprsn's guard — a group-header band that
+	// has no current row wants exactly that.
+	const f = (v, o) => {
 		v = v || {};
 		const r = Object.create(v);
-		r['$'] = r['@'] = v;
+		r['$'] = o ? o.root : v;
+		if (!o) r['@'] = v;
+		else if ('item' in o) r['@'] = o.item;
 		return run(nodes, r);
 	};
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
