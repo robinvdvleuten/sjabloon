@@ -19,15 +19,18 @@ const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
 const TAGS = /\{\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}\}|\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}/;
 
 // Shared parser state; parsing is synchronous so this is safe.
-let toks, i, fns, last, bound, nms;
+// `nms` collects free variables, `fnms` the registry functions called.
+let toks, i, fns, last, bound, nms, fnms;
 
 let err = msg => { throw SyntaxError(msg) };
 
-// Compile one expression and collect its free variables, minus the loop
-// variables currently in scope — those belong to the template, not the caller.
+// Compile one expression and collect its free variables (minus the loop
+// variables currently in scope, which belong to the template) and the registry
+// functions it calls.
 let cp = s => {
 	const e = compile(s, fns);
 	for (const n of e.names) bound.has(n) || nms.add(n);
+	for (const fn of e.functions) fnms.add(fn);
 	return e;
 };
 
@@ -90,18 +93,20 @@ let parse = stops => {
  * Compile a template once, render it many times.
  *
  * The returned renderer exposes `names`: the variables the template reads
- * from your values, deduplicated. Loop variables the template introduces
- * are not included.
+ * from your values, deduplicated. Loop variables the template introduces are
+ * not included. It also exposes `functions`: the registry functions the
+ * template calls, deduplicated.
  *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
- * @returns {{(values?: Record<string, any>): string, names: string[]}} Renderer for the compiled template.
+ * @returns {{(values?: Record<string, any>): string, names: string[], functions: string[]}} Renderer for the compiled template.
  * @throws {SyntaxError} On malformed tags, unclosed blocks, or bad expressions.
  */
 export function template(str, funcs) {
 	fns = funcs;
 	bound = new Set();
 	nms = new Set();
+	fnms = new Set();
 	toks = [];
 	const parts = String(str).split(TAGS);
 	for (let j = 0; j < parts.length; j += 7) {
@@ -124,6 +129,7 @@ export function template(str, funcs) {
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
 	// `[].concat(set)`, which wraps the Set instead of unpacking it.
 	f.names = Array.from(nms);
+	f.functions = Array.from(fnms);
 	return f;
 }
 

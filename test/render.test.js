@@ -141,6 +141,19 @@ test('compiled templates expose their names', t => {
 	t.end();
 });
 
+test('compiled templates expose their functions', t => {
+	const fns = { fmt: n => n, sum: xs => xs, upper: s => s };
+	t.deepEqual(template('{{ fmt(price) }}', fns).functions, ['fmt']);
+	t.deepEqual(
+		template('{{ fmt(a) }}{{#if sum(xs) > 0}}{{ fmt(b) }}{{/if}}', fns).functions,
+		['fmt', 'sum'],
+		'collected across tags and blocks, deduplicated'
+	);
+	t.deepEqual(template('{{ name.toUpperCase() }}').functions, [], 'methods are not registry functions');
+	t.deepEqual(template('{{ a }} and {{ b }}').functions, [], 'no calls, no functions');
+	t.end();
+});
+
 test('full template', t => {
 	const out = render(
 		'<h1>{{ user.name }}</h1><ul>{{#each items as it}}<li>{{ it.name }}: {{ it.price * it.qty }}{{#if it.qty > 1}} ({{ it.qty }}x){{/if}}</li>{{/each}}</ul>{{#if total >= 100}}<p>Free shipping</p>{{#else}}<p>{{ fmt(shipping) }}</p>{{/if}}',

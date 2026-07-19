@@ -31,7 +31,7 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 - `#each` walks `[value, key]` pairs: array indexes or own object keys; the second `as` binding is index-or-key. Nullish/non-iterable collections iterate zero times, and an empty collection renders the `{{#else}}` branch (in parent scope) if present.
 - `#if`/`#elif`/`#else` chains; `#elif` requires a space and an expression.
 - Whitespace trimming is per side and only when the dash hugs the brace; it eats all adjacent whitespace including newlines.
-- `template(...).names` = free variables across all expressions, minus loop-bound names in scope; the else-branch of `#each` is outside the loop scope. Use `Array.from` (never a spread) to turn the Set into the array — the bundler's transpile breaks Set spreads.
+- `template(...).names` = free variables across all expressions, minus loop-bound names in scope; the else-branch of `#each` is outside the loop scope. `template(...).functions` = the registry functions called across all expressions, deduplicated (both aggregate xprsn's per-expression `names`/`functions` in `cp()`). Use `Array.from` (never a spread) to turn the Sets into arrays — the bundler's transpile breaks Set spreads.
 
 ## Conventions
 

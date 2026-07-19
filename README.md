@@ -39,11 +39,12 @@ render(
 
 Compiles the template and returns a renderer `(values?) => string`. Malformed tags, unclosed blocks, and invalid expressions throw a `SyntaxError` at compile time.
 
-The renderer also carries `names`: every variable the template reads from your values, deduplicated, with loop variables excluded. Use it to validate a stored template against your data model, or to fetch only the fields a template actually needs before rendering.
+The renderer also carries `names` (every variable the template reads from your values, loop variables excluded) and `functions` (the registry functions it calls, methods excluded), both deduplicated. Check a stored template against your data model and its allowed functions before you render it, or fetch only the fields it needs.
 
 ```js
-const tpl = template('{{ title }}{{#each items as it}}{{ it.name }}{{/each}}');
-tpl.names; // => ['title', 'items']
+const tpl = template('{{ fmt(title) }}{{#each items as it}}{{ it.name }}{{/each}}', { fmt: s => s });
+tpl.names;     // => ['title', 'items']
+tpl.functions; // => ['fmt']
 ```
 
 ### `render(str, values?, functions?)`
