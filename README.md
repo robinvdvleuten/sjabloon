@@ -63,7 +63,7 @@ Shorthand for `template(str, functions)(values)`.
 | `{{! anything }}` | Comment, removed from output |
 | `{{- expr -}}` | A dash hugging either brace trims the whitespace on that side, newlines included; works on every tag form |
 
-Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
+Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
 
 Loop bodies see the loop variable plus everything from the outer scope. A nested loop can reuse an outer name and shadow it for its own body. The engine sets loop variables on a child scope, so your values object comes back exactly as you passed it in.
 
