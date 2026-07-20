@@ -7,6 +7,7 @@ import { compile } from 'xprsn';
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
+const BLOCKED = /^(?:__proto__|constructor|prototype)$/;
 
 // What `#each` walks: [value, key] pairs — array indexes or own object keys.
 const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
@@ -75,6 +76,7 @@ let parse = stops => {
 		} else if (t.tag.startsWith('#each ')) {
 			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
 			const list = cp(m[1]), name = m[2], idx = m[3];
+			if (BLOCKED.test(name) || idx && BLOCKED.test(idx)) err('Bad {{' + t.tag + '}}');
 			// `name`, `idx`, and `loop` are engine-bound inside the body, so
 			// exclude them from names there and restore outer bindings after.
 			const restore = scope(name, idx, 'loop');
