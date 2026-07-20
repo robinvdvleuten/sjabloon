@@ -1,0 +1,1 @@
+{{#each items as it, i}}{{ i }}={{ it }}{{/each}}

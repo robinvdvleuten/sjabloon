@@ -1,0 +1,1 @@
+{{#each xs as __proto__}}x{{/each}}
