@@ -1,11 +1,12 @@
 # sjabloon
 
-Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling of xprsn: plain JS + JSDoc, tape, microbundle.
+Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling of xprsn: plain JS + JSDoc, tape, tsdown.
 
 ## Commands
 
 - `npm test` — tape suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
-- `npm run build` — microbundle → `dist/` (ESM/CJS/UMD) + `index.d.ts` from JSDoc. Prints min+gzip sizes.
+- `npm run build` — tsdown (rolldown + oxc), configured in `tsdown.config.js` → `dist/` (ESM/CJS). Type generation is off; `index.d.ts` is hand-written. `xprsn` stays external (a runtime dependency, not bundled).
+- `npm run size` — size-limit checks the gzip size of `dist/index.js` and `dist/index.cjs` against the budgets in `package.json`.
 - Run a single suite: `npx tape test/render.test.js`
 - `npm run bench` — zero-dependency micro-benchmarks in `bench/`, run against `src/`. Measures template compile and render throughput separately (compile-once, render-many). `bench/` is not in `files`, so it is never published.
 
@@ -22,7 +23,7 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 1. **CSP safety is non-negotiable.** Same rules as xprsn: no string-to-code paths, the suite runs under `--disallow-code-generation-from-strings`, and a test scans the source — don't use the words "eval" or "new Function" even in comments.
 2. **Escaping is the default.** `{{ expr }}` must HTML-escape (`& < > " '`); raw output only via explicit `{{{ }}}`. Never flip that default.
 3. **All expression evaluation goes through xprsn's public API** (`compile` from the `xprsn` package). Never reimplement or inline expression parsing here — the `get()` security guard lives in xprsn and must stay single-sourced.
-4. Size is a soft goal (~0.8KB min+gzip on top of xprsn). Lukeed-style terse code, but never trade escaping, a guard, or a passing test for bytes.
+4. Size is a soft goal (~1.1KB min+gzip on top of xprsn). Lukeed-style terse code, but never trade escaping, a guard, or a passing test for bytes.
 
 ## Semantics to preserve
 
@@ -40,4 +41,4 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 
 - Tabs for indentation. Tests in `test/*.test.js` (`render`, `errors`, `safety` suites).
 - Do not mention Symfony in code, comments, or docs.
-- `dist/` is gitignored; `index.d.ts` is generated from JSDoc — edit the JSDoc in `src/index.js`.
+- `dist/` is gitignored build output. `index.d.ts` is **hand-written** (bundler type generation is off via `dts: false` in `tsdown.config.js`) — keep it in sync with the JSDoc in `src/index.js` by hand.
