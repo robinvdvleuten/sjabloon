@@ -1,13 +1,13 @@
 # sjabloon
 
-Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling of xprsn: plain JS + JSDoc, tape, tsdown.
+Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling of xprsn: plain JS + JSDoc, Node test runner, tsdown.
 
 ## Commands
 
-- `npm test` — tape suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
+- `npm test` — Node test suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
 - `npm run build` — tsdown (rolldown + oxc), configured in `tsdown.config.js` → `dist/` (ESM/CJS). Type generation is off; `index.d.ts` is hand-written. `xprsn` stays external (a runtime dependency, not bundled).
 - `npm run size` — size-limit checks the gzip size of `dist/index.js` and `dist/index.cjs` against the budgets in `package.json`.
-- Run a single suite: `npx tape test/render.test.js`
+- Run a single suite: `node --test --test-concurrency=1 test/render.test.js`
 - `npm run bench` — zero-dependency micro-benchmarks in `bench/`, run against `src/`. Measures template compile and render throughput separately (compile-once, render-many). `bench/` is not in `files`, so it is never published.
 - `npm run fuzz` — jazzer.js discovery (60s/target) over `compile`, `render`, `structured` targets in `fuzz/`, run against `src/` under `--disallow-code-generation-from-strings`. `npm run fuzz:regression` replays the committed `fuzz/corpus/*` deterministically (the CI gate); `.fuzz-corpus/` is the private, gitignored discovery corpus. See the `fuzz-testing` skill in `.claude/skills/`. `fuzz/` is not in `files`, so it is never published.
 

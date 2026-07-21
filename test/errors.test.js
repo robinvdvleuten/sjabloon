@@ -1,28 +1,25 @@
-import test from 'tape';
+import assert from 'node:assert/strict';
+import test from 'node:test';
 import { template } from '../src/index.js';
 
-test('unclosed blocks', t => {
-	t.throws(() => template('{{#if ok}}yes'), /Missing \{\{\/if\}\}/);
-	t.throws(() => template('{{#if a}}x{{#elif b}}y'), /Missing \{\{\/if\}\}/);
-	t.throws(() => template('{{#each items as it}}x'), /Missing \{\{\/each\}\}/);
-	t.end();
+test('unclosed blocks', () => {
+	assert.throws(() => template('{{#if ok}}yes'), /Missing \{\{\/if\}\}/);
+	assert.throws(() => template('{{#if a}}x{{#elif b}}y'), /Missing \{\{\/if\}\}/);
+	assert.throws(() => template('{{#each items as it}}x'), /Missing \{\{\/each\}\}/);
 });
 
-test('stray closers and unknown blocks', t => {
-	t.throws(() => template('{{/if}}'), /Unexpected \{\{\/if\}\}/);
-	t.throws(() => template('{{#if a}}{{/each}}{{/if}}'), SyntaxError);
-	t.throws(() => template('{{#unknown}}x{{/unknown}}'), SyntaxError);
-	t.end();
+test('stray closers and unknown blocks', () => {
+	assert.throws(() => template('{{/if}}'), /Unexpected \{\{\/if\}\}/);
+	assert.throws(() => template('{{#if a}}{{/each}}{{/if}}'), SyntaxError);
+	assert.throws(() => template('{{#unknown}}x{{/unknown}}'), SyntaxError);
 });
 
-test('malformed each', t => {
-	t.throws(() => template('{{#each items}}x{{/each}}'), /Bad \{\{#each items\}\}/);
-	t.end();
+test('malformed each', () => {
+	assert.throws(() => template('{{#each items}}x{{/each}}'), /Bad \{\{#each items\}\}/);
 });
 
-test('bad expressions fail at template time', t => {
-	t.throws(() => template('{{ 1 + }}'), SyntaxError);
-	t.throws(() => template('{{ nope(1) }}'), /nope is not a function/);
-	t.throws(() => template('{{#if 1 + }}x{{/if}}'), SyntaxError);
-	t.end();
+test('bad expressions fail at template time', () => {
+	assert.throws(() => template('{{ 1 + }}'), SyntaxError);
+	assert.throws(() => template('{{ nope(1) }}'), /nope is not a function/);
+	assert.throws(() => template('{{#if 1 + }}x{{/if}}'), SyntaxError);
 });
