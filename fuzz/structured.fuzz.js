@@ -43,7 +43,7 @@ function buildExpr(data, depth) {
 		if (pick === 2) return 'null';
 		return KEYS[data.consumeIntegralInRange(0, KEYS.length - 1)];
 	}
-	const kind = data.consumeIntegralInRange(0, 9);
+	const kind = data.consumeIntegralInRange(0, 10);
 	if (kind === 0) return String(data.consumeIntegralInRange(-100, 100));
 	if (kind === 1) {
 		const op = OPS[data.consumeIntegralInRange(0, OPS.length - 1)];
@@ -78,6 +78,10 @@ function buildExpr(data, depth) {
 	if (kind === 8) {
 		const m = METHODS[data.consumeIntegralInRange(0, METHODS.length - 1)];
 		return `(${buildExpr(data, depth - 1)}).${m}()`;
+	}
+	if (kind === 9) {
+		const q = JSON.stringify(data.consumeString(12, 'utf8'));
+		return data.consumeBoolean() ? q : "'" + q.slice(1, -1).replace(/'/g, "\\'") + "'";
 	}
 	const root = data.consumeBoolean() ? '$' : '@';
 	return `(${root}.${pickKey(data)})`;
