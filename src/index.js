@@ -54,20 +54,12 @@ let run = (nodes, v) => nodes.map(n => n(v)).join('');
 // (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form).
 let interp = (src, wrap) => (e => v => wrap(e(v) ?? ''))(cp(src));
 
-// Bind `names` for a block body; returns a restore that unbinds only the names
-// this block introduced, leaving an outer scope's bindings in place.
-let scope = (...names) => {
-	const fresh = names.filter(n => n && !bound.has(n));
-	fresh.forEach(n => bound.add(n));
-	return () => fresh.forEach(n => bound.delete(n));
-};
-
 // Compile one expression and collect its free variables (minus the loop
 // variables currently in scope, which belong to the template) and the registry
 // functions it calls.
 let cp = s => {
 	const e = compile(s, fns);
-	for (const n of e.names) bound.has(n) || nms.add(n);
+	for (const n of e.names) bound.includes(n) || nms.add(n);
 	for (const fn of e.functions) fnms.add(fn);
 	return e;
 };
@@ -101,9 +93,12 @@ let parse = stops => {
 			if (BLOCKED.test(name) || idx && BLOCKED.test(idx)) err('Bad {{' + t.tag + '}}');
 			// `name`, `idx`, and `loop` are engine-bound inside the body, so
 			// exclude them from names there and restore outer bindings after.
-			const restore = scope(name, idx, 'loop');
+			const mark = bound.length;
+			bound.push(name);
+			if (idx) bound.push(idx);
+			bound.push('loop');
 			const body = parse(['#else', '/each']);
-			restore();
+			bound.length = mark;
 			const empty = last === '#else' ? parse(['/each']) : [];
 			// Child scopes inherit the parent via the prototype chain, so outer
 			// variables stay visible inside the loop body. `@` re-points to the
@@ -158,7 +153,7 @@ export function template(str, funcs) {
 	fns = funcs;
 	// `$` (root) and `@` (current item) are engine-bound anchors, always in
 	// scope, so they never count as caller-supplied `names`.
-	bound = new Set(['$', '@']);
+	bound = ['$', '@'];
 	nms = new Set();
 	fnms = new Set();
 	toks = lex(String(str));
