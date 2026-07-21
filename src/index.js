@@ -17,7 +17,7 @@ const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
 // Split into [text, rawL, raw, rawR, tagL, tag, tagR, ...] strides of 7.
 // The dash captures hug the braces, so `{{ -price }}` stays a unary minus
 // while `{{- price -}}` trims the whitespace touching the tag.
-const TAGS = /\{\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}\}|\{\{(-)?\s*([\s\S]*?)\s*(-)?\}\}/;
+const TAGS = /\{\{\{(-)?([\s\S]*?)(-)?\}\}\}|\{\{(-)?([\s\S]*?)(-)?\}\}/;
 
 // Shared parser state; parsing is synchronous so this is safe.
 // `nms` collects free variables, `fnms` the registry functions called.
@@ -145,15 +145,15 @@ export function template(str, funcs) {
 		if (parts[j]) toks.push({ text: parts[j] });
 		if (j + 1 >= parts.length) break;
 		const raw = parts[j + 2] != null;
-		const t = raw ? { raw: parts[j + 2] } : { tag: parts[j + 5] };
+		const t = raw ? { raw: parts[j + 2].trim() } : { tag: parts[j + 5].trim() };
 		t.l = parts[j + (raw ? 1 : 4)] === '-';
 		t.r = parts[j + (raw ? 3 : 6)] === '-';
 		toks.push(t);
 	}
 	// `{{-` / `-}}` eat the whitespace touching that side of the tag.
 	toks.forEach((t, k) => {
-		if (t.l && toks[k - 1]?.text) toks[k - 1].text = toks[k - 1].text.replace(/\s+$/, '');
-		if (t.r && toks[k + 1]?.text) toks[k + 1].text = toks[k + 1].text.replace(/^\s+/, '');
+		if (t.l && toks[k - 1]?.text) toks[k - 1].text = toks[k - 1].text.trimEnd();
+		if (t.r && toks[k + 1]?.text) toks[k + 1].text = toks[k + 1].text.trimStart();
 	});
 	i = 0;
 	const nodes = parse([]);

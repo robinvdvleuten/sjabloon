@@ -33,3 +33,21 @@ test('source contains no string-to-code constructs', t => {
 	t.notOk(/\beval\b|\bFunction\s*\(|new\s+Function/.test(src));
 	t.end();
 });
+
+test('tokenizer resists ReDoS-shaped input', t => {
+	const n = 50_000;
+	const t0 = Date.now();
+
+	// Open braces + long runs of spaces (no closer) must stay linear.
+	t.equal(template('{{' + ' '.repeat(n))({}), '{{' + ' '.repeat(n));
+	t.equal(template('{{{' + ' '.repeat(n))({}), '{{{' + ' '.repeat(n));
+
+	// Real tag with heavy inner whitespace still tokenizes.
+	t.equal(template('{{' + ' '.repeat(n) + 'x' + ' '.repeat(n) + '}}')({ x: 1 }), '1');
+
+	// Adjacent whitespace + trim dashes must stay linear.
+	t.equal(template(' '.repeat(n) + '{{- "x" -}}' + ' '.repeat(n))({}), 'x');
+
+	t.ok(Date.now() - t0 < 500, 'completes quickly');
+	t.end();
+});
