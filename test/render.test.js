@@ -182,6 +182,8 @@ test('whitespace trimming', () => {
 	assert.strictEqual(render('a {{{- html -}}} b', { html: '<i>' }), 'a<i>b', 'raw tags trim too');
 	assert.strictEqual(render('<ul>\n{{#each xs as x -}}\n<li>{{ x }}</li>\n{{-/each}}\n</ul>', { xs: [1, 2] }),
 		'<ul>\n<li>1</li><li>2</li>\n</ul>', 'block and closing tags trim their own sides');
+	assert.strictEqual(render('a {{ "x" -}}{{ "y" }} z'), 'a xy z', 'right trim does not cross an adjacent tag');
+	assert.strictEqual(render('a  {{- unclosed'), 'a  {{- unclosed', 'an unclosed tag does not trim');
 	assert.strictEqual(render('{{ -n }}', { n: 5 }), '-5', 'space before a unary minus is not a trim marker');
 	assert.strictEqual(render('a  {{ "x" }}  b'), 'a  x  b', 'no dashes, no trimming');
 });

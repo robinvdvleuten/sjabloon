@@ -33,10 +33,10 @@ let lex = s => {
 		if (b < 0) { out.push({ text: s.slice(a) }); break; }
 		const r = b > p && s[b - 1] === '-';
 		const body = s.slice(p, r ? b - 1 : b).trim(), t = raw ? { raw: body } : { tag: body };
-		t.l = l;
-		t.r = r;
+		if (l && out.at(-1)?.text) out.at(-1).text = out.at(-1).text.trimEnd();
 		out.push(t);
 		i = b + 2 + raw;
+		if (r) while (/\s/.test(s[i])) i++;
 	}
 	return out;
 };
@@ -157,11 +157,6 @@ export function template(str, funcs) {
 	nms = new Set();
 	fnms = new Set();
 	toks = lex(String(str));
-	// `{{-` / `-}}` eat the whitespace touching that side of the tag.
-	toks.forEach((t, k) => {
-		if (t.l && toks[k - 1]?.text) toks[k - 1].text = toks[k - 1].text.trimEnd();
-		if (t.r && toks[k + 1]?.text) toks[k + 1].text = toks[k + 1].text.trimStart();
-	});
 	i = 0;
 	const nodes = parse([]);
 	// Wrap the values in a root scope carrying the anchors, without mutating
