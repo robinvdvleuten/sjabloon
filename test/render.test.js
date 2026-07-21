@@ -48,6 +48,14 @@ test('each blocks', () => {
 	assert.strictEqual(render('{{#each items as it, i }}{{ i }}:{{ it }} {{/each}}', { items: ['a', 'b'] }), '0:a 1:b ');
 	assert.strictEqual(render('{{#each items as it}}{{ it.name }}{{/each}}', { items: [{ name: 'x' }] }), 'x');
 	assert.strictEqual(render('{{#each items as it}}never{{/each}}', { items: [] }), '');
+
+	const sparse = Array(3);
+	sparse[1] = 'x';
+	assert.strictEqual(
+		render('{{#each items as it, i}}{{ i }}:{{ it }}:{{ loop.index }}/{{ loop.length }}{{/each}}', { items: sparse }),
+		'1:x:2/3',
+		'sparse indexes and loop positions are preserved'
+	);
 });
 
 test('each iterates objects as value, key', () => {

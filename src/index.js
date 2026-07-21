@@ -9,11 +9,6 @@ const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
 const BLOCKED = /^(?:__proto__|constructor|prototype)$/;
 
-// What `#each` walks: [value, key] pairs — array indexes or own object keys.
-const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
-	: lv && typeof lv === 'object' ? Object.keys(lv).map(k => [lv[k], k])
-	: [];
-
 // Linear scan into text/tag/raw tokens. Dashes hug braces (`{{- x -}}` trims;
 // `{{ -x }}` stays unary minus). Prefer {{{ }}} over {{ }}. `triple` latches
 // off once }}} is gone so {{{...}}×N does not rescan to EOF (stays O(n)).
@@ -107,9 +102,11 @@ let parse = stops => {
 			// current item at each level, `$` (root) rides the chain, and `loop`
 			// carries the iteration metadata (index/first/last/length).
 			nodes.push(v => {
-				const ps = pairs(list(v));
+				const lv = list(v), arr = Array.isArray(lv);
+				const ps = arr ? lv.slice() : lv && typeof lv === 'object' ? Object.keys(lv).map(k => [lv[k], k]) : [];
 				if (!ps.length) return run(empty, v);
-				return ps.map(([item, key], j) => {
+				return ps.map((x, j) => {
+					const item = arr ? x : x[0], key = arr ? j : x[1];
 					const s = Object.create(v);
 					s[name] = item;
 					if (idx) s[idx] = key;
