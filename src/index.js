@@ -21,8 +21,8 @@ let lex = s => {
 	const out = [];
 	for (let i = 0, triple = 1; i < s.length; ) {
 		const a = s.indexOf('{{', i);
-		if (a < 0) { out.push({ text: s.slice(i) }); break; }
-		if (a > i) out.push({ text: s.slice(i, a) });
+		if (a < 0) { out.push([0, s.slice(i)]); break; }
+		if (a > i) out.push([0, s.slice(i, a)]);
 		let raw = s[a + 2] === '{', p = a + 2 + raw, l = s[p] === '-', b = -1;
 		if (l) p++;
 		if (raw && triple) { b = s.indexOf('}}}', p); if (b < 0) triple = 0; }
@@ -30,10 +30,11 @@ let lex = s => {
 			if (raw) { raw = !1; p = a + 2; l = s[p] === '-'; if (l) p++; }
 			b = s.indexOf('}}', p);
 		}
-		if (b < 0) { out.push({ text: s.slice(a) }); break; }
+		if (b < 0) { out.push([0, s.slice(a)]); break; }
 		const r = b > p && s[b - 1] === '-';
-		const body = s.slice(p, r ? b - 1 : b).trim(), t = raw ? { raw: body } : { tag: body };
-		if (l && out.at(-1)?.text) out.at(-1).text = out.at(-1).text.trimEnd();
+		const body = s.slice(p, r ? b - 1 : b).trim(), t = [raw ? 1 : 2, body];
+		const prev = out.at(-1);
+		if (l && prev?.[0] === 0 && prev[1]) prev[1] = prev[1].trimEnd();
 		out.push(t);
 		i = b + 2 + raw;
 		if (r) while (/\s/.test(s[i])) i++;
@@ -76,21 +77,22 @@ let branch = cond => {
 let parse = stops => {
 	const nodes = [];
 	for (let t; (t = toks[i++]); ) {
-		if (t.text != null) {
-			nodes.push((s => () => s)(t.text));
-		} else if (t.raw != null) {
-			nodes.push(interp(t.raw, String));
-		} else if (stops.includes(t.tag.split(' ')[0])) {
-			last = t.tag;
+		const tag = t[1];
+		if (!t[0]) {
+			nodes.push((s => () => s)(tag));
+		} else if (t[0] === 1) {
+			nodes.push(interp(tag, String));
+		} else if (stops.includes(tag.split(' ')[0])) {
+			last = tag;
 			return nodes;
-		} else if (t.tag[0] === '!') {
+		} else if (tag[0] === '!') {
 			// comment
-		} else if (t.tag.startsWith('#if ')) {
-			nodes.push(branch(cp(t.tag.slice(4))));
-		} else if (t.tag.startsWith('#each ')) {
-			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(t.tag) || err('Bad {{' + t.tag + '}}');
+		} else if (tag.startsWith('#if ')) {
+			nodes.push(branch(cp(tag.slice(4))));
+		} else if (tag.startsWith('#each ')) {
+			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(tag) || err('Bad {{' + tag + '}}');
 			const list = cp(m[1]), name = m[2], idx = m[3];
-			if (BLOCKED.test(name) || idx && BLOCKED.test(idx)) err('Bad {{' + t.tag + '}}');
+			if (BLOCKED.test(name) || idx && BLOCKED.test(idx)) err('Bad {{' + tag + '}}');
 			// `name`, `idx`, and `loop` are engine-bound inside the body, so
 			// exclude them from names there and restore outer bindings after.
 			const mark = bound.length;
@@ -116,10 +118,10 @@ let parse = stops => {
 					return run(body, s);
 				}).join('');
 			});
-		} else if (t.tag[0] === '#' || t.tag[0] === '/') {
-			err('Unexpected {{' + t.tag + '}}');
+		} else if (tag[0] === '#' || tag[0] === '/') {
+			err('Unexpected {{' + tag + '}}');
 		} else {
-			nodes.push(interp(t.tag, esc));
+			nodes.push(interp(tag, esc));
 		}
 	}
 	stops.length && err('Missing {{' + stops[stops.length - 1] + '}}');
