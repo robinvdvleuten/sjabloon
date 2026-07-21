@@ -23,15 +23,15 @@ let lex = s => {
 		const a = s.indexOf('{{', i);
 		if (a < 0) { out.push({ text: s.slice(i) }); break; }
 		if (a > i) out.push({ text: s.slice(i, a) });
-		let raw = s.charCodeAt(a + 2) === 123, p = a + 2 + raw, l = s.charCodeAt(p) === 45, b = -1;
+		let raw = s[a + 2] === '{', p = a + 2 + raw, l = s[p] === '-', b = -1;
 		if (l) p++;
 		if (raw && triple) { b = s.indexOf('}}}', p); if (b < 0) triple = 0; }
 		if (b < 0) {
-			if (raw) { raw = !1; p = a + 2; l = s.charCodeAt(p) === 45; if (l) p++; }
+			if (raw) { raw = !1; p = a + 2; l = s[p] === '-'; if (l) p++; }
 			b = s.indexOf('}}', p);
 		}
 		if (b < 0) { out.push({ text: s.slice(a) }); break; }
-		const r = b > p && s.charCodeAt(b - 1) === 45;
+		const r = b > p && s[b - 1] === '-';
 		const body = s.slice(p, r ? b - 1 : b).trim(), t = raw ? { raw: body } : { tag: body };
 		t.l = l;
 		t.r = r;
