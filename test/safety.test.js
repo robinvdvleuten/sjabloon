@@ -61,3 +61,14 @@ test('tokenizer resists ReDoS-shaped input', t => {
 	t.ok(Date.now() - t0 < 500, 'completes quickly');
 	t.end();
 });
+
+test('xprsn tokenizer stays linear through template tags', t => {
+	const n = 30_000;
+	const t0 = Date.now();
+	for (const q of ['"', "'"]) {
+		const expr = q + ('\\' + q).repeat(n);
+		t.throws(() => template('{{ ' + expr + ' }}'), SyntaxError, q + ' quote input is rejected');
+	}
+	t.ok(Date.now() - t0 < 1500, 'completes without quadratic rescanning');
+	t.end();
+});
