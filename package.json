@@ -60,7 +60,7 @@
 		"handlebars"
 	],
 	"dependencies": {
-		"xprsn": "^0.4.0"
+		"xprsn": "^0.4.1"
 	},
 	"devDependencies": {
 		"@jazzer.js/bug-detectors": "^4.0.0",
