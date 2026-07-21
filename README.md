@@ -1,6 +1,6 @@
 # sjabloon
 
-A tiny, CSP-safe template engine for JavaScript. **~1.1KB min+gzip (~2.4KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
+A tiny, CSP-safe template engine for JavaScript. **~1.2KB min+gzip (~2.5KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
 
 [![NPM version](https://img.shields.io/npm/v/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
 [![Build Status](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml/badge.svg)](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml)

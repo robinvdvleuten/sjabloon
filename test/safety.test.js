@@ -42,11 +42,21 @@ test('tokenizer resists ReDoS-shaped input', t => {
 	t.equal(template('{{' + ' '.repeat(n))({}), '{{' + ' '.repeat(n));
 	t.equal(template('{{{' + ' '.repeat(n))({}), '{{{' + ' '.repeat(n));
 
+	// CodeQL shape: repeated open-brace prefixes without closers.
+	t.equal(template('{{{{a'.repeat(n))({}), '{{{{a'.repeat(n));
+	t.equal(template('{{{{{{a'.repeat(n))({}), '{{{{{{a'.repeat(n));
+
+	// Many {{{...}} segments (no }}}) must not rescan to EOF each time.
+	try { template(('{{{z}}').repeat(20_000)); } catch { /* compile fails on `{z` */ }
+
 	// Real tag with heavy inner whitespace still tokenizes.
 	t.equal(template('{{' + ' '.repeat(n) + 'x' + ' '.repeat(n) + '}}')({ x: 1 }), '1');
 
 	// Adjacent whitespace + trim dashes must stay linear.
 	t.equal(template(' '.repeat(n) + '{{- "x" -}}' + ' '.repeat(n))({}), 'x');
+
+	// Unclosed raw falls back to {{ ... }} (extra `{` enters the expr).
+	t.throws(() => template('{{{1}}'), SyntaxError);
 
 	t.ok(Date.now() - t0 < 500, 'completes quickly');
 	t.end();

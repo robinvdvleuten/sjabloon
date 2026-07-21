@@ -14,10 +14,32 @@ const pairs = lv => Array.isArray(lv) ? lv.map((x, j) => [x, j])
 	: lv && typeof lv === 'object' ? Object.keys(lv).map(k => [lv[k], k])
 	: [];
 
-// Split into [text, rawL, raw, rawR, tagL, tag, tagR, ...] strides of 7.
-// The dash captures hug the braces, so `{{ -price }}` stays a unary minus
-// while `{{- price -}}` trims the whitespace touching the tag.
-const TAGS = /\{\{\{(-)?([\s\S]*?)(-)?\}\}\}|\{\{(-)?([\s\S]*?)(-)?\}\}/;
+// Linear scan into text/tag/raw tokens. Dashes hug braces (`{{- x -}}` trims;
+// `{{ -x }}` stays unary minus). Prefer {{{ }}} over {{ }}. `triple` latches
+// off once }}} is gone so {{{...}}×N does not rescan to EOF (stays O(n)).
+let lex = s => {
+	const out = [];
+	for (let i = 0, triple = 1; i < s.length; ) {
+		const a = s.indexOf('{{', i);
+		if (a < 0) { out.push({ text: s.slice(i) }); break; }
+		if (a > i) out.push({ text: s.slice(i, a) });
+		let raw = s.charCodeAt(a + 2) === 123, p = a + 2 + raw, l = s.charCodeAt(p) === 45, b = -1;
+		if (l) p++;
+		if (raw && triple) { b = s.indexOf('}}}', p); if (b < 0) triple = 0; }
+		if (b < 0) {
+			if (raw) { raw = !1; p = a + 2; l = s.charCodeAt(p) === 45; if (l) p++; }
+			b = s.indexOf('}}', p);
+		}
+		if (b < 0) { out.push({ text: s.slice(a) }); break; }
+		const r = b > p && s.charCodeAt(b - 1) === 45;
+		const body = s.slice(p, r ? b - 1 : b).trim(), t = raw ? { raw: body } : { tag: body };
+		t.l = l;
+		t.r = r;
+		out.push(t);
+		i = b + 2 + raw;
+	}
+	return out;
+};
 
 // Shared parser state; parsing is synchronous so this is safe.
 // `nms` collects free variables, `fnms` the registry functions called.
@@ -139,17 +161,7 @@ export function template(str, funcs) {
 	bound = new Set(['$', '@']);
 	nms = new Set();
 	fnms = new Set();
-	toks = [];
-	const parts = String(str).split(TAGS);
-	for (let j = 0; j < parts.length; j += 7) {
-		if (parts[j]) toks.push({ text: parts[j] });
-		if (j + 1 >= parts.length) break;
-		const raw = parts[j + 2] != null;
-		const t = raw ? { raw: parts[j + 2].trim() } : { tag: parts[j + 5].trim() };
-		t.l = parts[j + (raw ? 1 : 4)] === '-';
-		t.r = parts[j + (raw ? 3 : 6)] === '-';
-		toks.push(t);
-	}
+	toks = lex(String(str));
 	// `{{-` / `-}}` eat the whitespace touching that side of the tag.
 	toks.forEach((t, k) => {
 		if (t.l && toks[k - 1]?.text) toks[k - 1].text = toks[k - 1].text.trimEnd();
