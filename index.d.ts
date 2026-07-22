@@ -1,20 +1,30 @@
-export interface DiagnosticBlock {
+import type { XprsnErrorCode } from 'xprsn';
+
+export type SjabloonErrorCode =
+    | XprsnErrorCode
+    | 'SJABLOON_EACH_SYNTAX'
+    | 'SJABLOON_BLOCKED_BINDING'
+    | 'SJABLOON_UNEXPECTED_TAG'
+    | 'SJABLOON_UNKNOWN_BLOCK'
+    | 'SJABLOON_UNCLOSED_BLOCK';
+
+export interface SjabloonBlock {
     readonly type: 'if' | 'each';
     readonly start: number;
     readonly end: number;
 }
 
-export interface Diagnostic extends Error {
-    code: string;
-    start: number;
-    end: number;
-    readonly blocks: readonly DiagnosticBlock[];
+export interface SjabloonDiagnostic extends Error {
+    readonly code: SjabloonErrorCode;
+    readonly start: number;
+    readonly end: number;
+    readonly blocks: readonly SjabloonBlock[];
 }
 
 /**
  * Check whether an error was produced or translated by this sjabloon module instance.
  */
-export function isDiagnostic(error: unknown): error is Diagnostic;
+export function isDiagnostic(error: unknown): error is SjabloonDiagnostic;
 
 /**
  * Compile a template once, render it many times.
