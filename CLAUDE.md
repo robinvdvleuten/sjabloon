@@ -5,7 +5,7 @@ Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling
 ## Commands
 
 - `npm test` — Node test suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
-- `npm run build` — tsdown (rolldown + oxc), configured in `tsdown.config.js` → `dist/` (ESM/CJS). Type generation is off; `index.d.ts` is hand-written. `xprsn` stays external (a runtime dependency, not bundled).
+- `npm run build` — tsdown (rolldown + oxc), configured in `tsdown.config.js` → `dist/` (ESM/CJS targeting ES2024). Type generation is off; `index.d.ts` is hand-written. `xprsn` stays external (a runtime dependency, not bundled).
 - `npm run size` — size-limit checks the gzip size of `dist/index.js` and `dist/index.cjs` against the budgets in `package.json`.
 - Run a single suite: `node --test --test-concurrency=1 test/render.test.js`
 - `npm run bench` — zero-dependency micro-benchmarks in `bench/`, run against `src/`. Measures template compile and render throughput separately (compile-once, render-many). `bench/` is not in `files`, so it is never published.
@@ -42,4 +42,6 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 
 - Tabs for indentation. Tests in `test/*.test.js` (`render`, `errors`, `safety` suites).
 - Do not mention Symfony in code, comments, or docs.
+- Runtime support is Node.js 22+ through ESM/CJS and ES2024 browser environments through a standards-based ESM bundler. There is no direct-script global or UMD build.
+- Suggested commit messages must follow Conventional Commits and be at most 80 characters.
 - `dist/` is gitignored build output. `index.d.ts` is **hand-written** (bundler type generation is off via `dts: false` in `tsdown.config.js`) — keep it in sync with the JSDoc in `src/index.js` by hand.

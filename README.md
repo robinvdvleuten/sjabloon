@@ -123,6 +123,10 @@ This is the practical difference from engines like Handlebars (without precompil
 - Expressions inherit all of xprsn's guards: no `__proto__`/`constructor`/`prototype` access, null-prototype hash literals, and functions resolved only from your registry.
 - Templates read your values; they cannot assign to them.
 
+## Environments
+
+Node.js 22 and newer are supported through the ESM and CommonJS builds. Browser use is supported through a standards-based ESM bundler in environments supporting ES2024. Direct `<script>` globals and UMD builds are not provided.
+
 ## License
 
 MIT © [Robin van der Vleuten](https://robinvdvleuten.nl)
