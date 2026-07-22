@@ -1,6 +1,6 @@
 # sjabloon
 
-A tiny, CSP-safe template engine for JavaScript. **~1.2KB min+gzip (~2.5KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
+A tiny, CSP-safe template engine for JavaScript. **~1.8KB min+gzip (~3.6KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
 
 [![NPM version](https://img.shields.io/npm/v/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
 [![Build Status](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml/badge.svg)](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml)
@@ -58,6 +58,21 @@ tpl.functions; // => ['fmt']
 ### `render(str, values?, functions?)`
 
 Shorthand for `template(str, functions)(values)`.
+
+### Error diagnostics
+
+Sjabloon errors keep their native `SyntaxError` or `TypeError` class and expose:
+
+- `code`: a stable `SJABLOON_*` parser category or the original `XPRSN_*` expression category;
+- `start`: a zero-based offset in the original template;
+- `end`: the exclusive template offset;
+- `blocks`: a frozen, outermost-first array of `{ type, start, end }` opener spans.
+
+Parser codes are `SJABLOON_EACH_SYNTAX`, `SJABLOON_BLOCKED_BINDING`, `SJABLOON_UNEXPECTED_TAG`, `SJABLOON_UNKNOWN_BLOCK`, and `SJABLOON_UNCLOSED_BLOCK`. A missing closer uses an empty span at the end of the template. Expression offsets refer to the original template, so surrounding braces, whitespace, and trim markers contribute to their absolute position.
+
+Unauthenticated errors thrown by registered functions, getters, methods, or value coercion hooks are host errors. Sjabloon passes them through unchanged and does not attach template diagnostic fields.
+
+Use `isDiagnostic(error)` when a host needs to distinguish those errors. It returns `true` only for errors produced or translated by the same sjabloon module instance. Copying a documented `code`, `start`, `end`, and `blocks` onto another error does not authenticate it. A diagnostic from another installed copy or module instance also returns `false`.
 
 ## Syntax
 

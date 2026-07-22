@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { FuzzedDataProvider } from '@jazzer.js/core';
-import { template } from '../src/index.js';
+import { isDiagnostic, template } from '../src/index.js';
 
 const OPS = ['+','-','*','/','%','==','!=','<','>','<=','>=','and','or','&&','||','??','in'];
 const UNARY = ['!','-','not '];
@@ -149,6 +149,35 @@ const isRenderErr = e =>
 	e instanceof TypeError ||
 	(e instanceof RangeError && /stack|Maximum call/i.test(String(e.message)));
 
+function diagnostic(e, src) {
+	if (!isDiagnostic(e)) throw new Error('unauthenticated template diagnostic');
+	if (typeof e.code !== 'string') throw new Error('diagnostic code missing');
+	if (!Number.isInteger(e.start) || !Number.isInteger(e.end) ||
+		e.start < 0 || e.start > e.end || e.end > src.length)
+		throw new Error('diagnostic span outside template');
+	if (!Array.isArray(e.blocks) || !Object.isFrozen(e.blocks))
+		throw new Error('diagnostic blocks are mutable');
+	const desc = Object.getOwnPropertyDescriptor(e, 'blocks');
+	if (!desc || desc.writable !== false) throw new Error('diagnostic blocks property is writable');
+	let at = -1;
+	for (const block of e.blocks) {
+		if (!Object.isFrozen(block) || (block.type !== 'if' && block.type !== 'each') ||
+			!Number.isInteger(block.start) || !Number.isInteger(block.end) ||
+			block.start < 0 || block.start > block.end || block.end > src.length ||
+			block.start <= at)
+			throw new Error('invalid diagnostic block context');
+		at = block.start;
+	}
+	return JSON.stringify({
+		name: e.name,
+		message: e.message,
+		code: e.code,
+		start: e.start,
+		end: e.end,
+		blocks: e.blocks,
+	});
+}
+
 // ESCAPING NEVER BYPASSED: in escaped {{ }} output the raw XSS characters must
 // never survive, and every & must begin a known entity. Sound because literal
 // text uses a safe alphabet and DANGER values contain no & of their own.
@@ -204,14 +233,29 @@ export function fuzz(data) {
 
 	let render;
 	try { render = template(src, FUNCS); }
-	catch (e) { if (!isCompileErr(e)) throw e; return; }
+	catch (e) {
+		if (!isCompileErr(e)) throw e;
+		const first = diagnostic(e, src);
+		try { template(src, FUNCS); }
+		catch (again) {
+			if (!isCompileErr(again)) throw again;
+			assert.strictEqual(diagnostic(again, src), first, 'non-deterministic compile diagnostic');
+			return;
+		}
+		throw new Error('compile diagnostic disappeared');
+	}
 
 	const values = buildValues(provider, render.names);
 	const snap = JSON.stringify(values);
 
-	let ok = false, first;
+	let ok = false, first, failure;
 	try { first = render(values); ok = true; }
-	catch (e) { if (!isRenderErr(e)) throw e; }
+	catch (e) {
+		if (!isRenderErr(e)) throw e;
+		failure = e;
+		if (isDiagnostic(e)) diagnostic(e, src);
+		else if (Object.hasOwn(e, 'blocks')) throw new Error('unauthenticated error gained template context');
+	}
 	finally {
 		// Run on the throwing path too: a pollution/mutation finding outranks
 		// any expected render error.
@@ -228,5 +272,22 @@ export function fuzz(data) {
 			if (JSON.stringify(values) !== snap) throw new Error('values mutated');
 		}
 		assert.strictEqual(second, first, 'non-deterministic render');
+	} else if (!(failure instanceof RangeError)) {
+		const authenticated = isDiagnostic(failure);
+		const firstDiagnostic = authenticated
+			? diagnostic(failure, src)
+			: JSON.stringify({ name: failure.name, message: failure.message });
+		try { render(values); }
+		catch (again) {
+			if (!isRenderErr(again)) throw again;
+			if (again instanceof RangeError) throw again;
+			assert.strictEqual(isDiagnostic(again), authenticated, 'render diagnostic provenance changed');
+			const secondDiagnostic = authenticated
+				? diagnostic(again, src)
+				: JSON.stringify({ name: again.name, message: again.message });
+			assert.strictEqual(secondDiagnostic, firstDiagnostic, 'non-deterministic render diagnostic');
+			return;
+		}
+		throw new Error('render diagnostic disappeared');
 	}
 }

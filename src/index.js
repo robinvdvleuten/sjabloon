@@ -3,11 +3,22 @@
  * Templates compile to a composition of closures; template text is never
  * turned into JavaScript, so strict CSP is satisfied.
  */
-import { compile } from 'xprsn';
+import { compile, isDiagnostic as isXprsnDiagnostic } from 'xprsn';
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
 const BLOCKED = /^(?:__proto__|constructor|prototype)$/;
+const DIAGNOSTICS = new WeakSet();
+const mark = DIAGNOSTICS.add.bind(DIAGNOSTICS);
+const owns = DIAGNOSTICS.has.bind(DIAGNOSTICS);
+
+/**
+ * Check whether an error was produced or translated by sjabloon.
+ *
+ * @param {unknown} error Any thrown value.
+ * @returns {boolean} Whether `error` is an authentic sjabloon diagnostic.
+ */
+export const isDiagnostic = error => owns(error);
 
 // Linear scan into text/tag/raw tokens. Dashes hug braces (`{{- x -}}` trims;
 // `{{ -x }}` stays unary minus). Prefer {{{ }}} over {{ }}. `triple` latches
@@ -27,11 +38,13 @@ let lex = s => {
 		}
 		if (b < 0) { out.push([0, s.slice(a)]); break; }
 		const r = b > p && s[b - 1] === '-';
-		const body = s.slice(p, r ? b - 1 : b).trim(), t = [raw ? 1 : 2, body];
+		const q = r ? b - 1 : b, whole = s.slice(p, q), body = whole.trim();
+		const start = p + whole.length - whole.trimStart().length, end = b + 2 + raw;
+		const t = [raw ? 1 : 2, body, a, end, p, q, start, start + body.length, l, r];
 		const prev = out.at(-1);
 		if (l && prev?.[0] === 0 && prev[1]) prev[1] = prev[1].trimEnd();
 		out.push(t);
-		i = b + 2 + raw;
+		i = end;
 		if (r) while (/\s/.test(s[i])) i++;
 	}
 	return out;
@@ -39,33 +52,68 @@ let lex = s => {
 
 // Shared parser state; parsing is synchronous so this is safe.
 // `nms` collects free variables, `fnms` the registry functions called.
-let toks, i, fns, last, bound, nms, fnms;
+let toks, i, fns, last, bound, nms, fnms, src, blocks;
 
-let err = msg => { throw SyntaxError(msg) };
+let snap = () => Object.freeze(blocks.slice());
+let opener = (type, t) => Object.freeze({ type, start: t[2], end: t[3] });
+let attach = (e, context) => {
+	Object.defineProperty(e, 'blocks', { value: context, enumerable: true });
+	mark(e);
+	return e;
+};
+let fault = (msg, code, t, start = t?.[2] ?? src.length, end = t?.[3] ?? src.length) => {
+	const e = SyntaxError(msg);
+	e.code = code;
+	e.start = start;
+	e.end = end;
+	throw attach(e, snap());
+};
+let translated = (e, start, context) => {
+	if (!isXprsnDiagnostic(e)) throw e;
+	e.start += start;
+	e.end += start;
+	throw attach(e, context);
+};
+let unexpected = t => fault('Unexpected {{' + t[1] + '}}', 'SJABLOON_UNEXPECTED_TAG', t);
 
 // Render a list of nodes against a scope.
 let run = (nodes, v) => nodes.map(n => n(v)).join('');
 
 // A leaf interpolation node: compile `src`, render nullish as '', apply `wrap`
 // (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form).
-let interp = (src, wrap) => (e => v => wrap(e(v) ?? ''))(cp(src));
+let interp = (t, wrap) => (e => v => wrap(e(v) ?? ''))(cp(t[1], t[6], snap()));
 
 // Compile one expression and collect its free variables (minus the loop
 // variables currently in scope, which belong to the template) and the registry
 // functions it calls.
-let cp = s => {
-	const e = compile(s, fns);
+let cp = (s, start, context) => {
+	let e;
+	try {
+		e = compile(s, fns);
+	} catch (x) {
+		translated(x, start, context);
+	}
 	for (const n of e.names) bound.includes(n) || nms.add(n);
 	for (const fn of e.functions) fnms.add(fn);
-	return e;
+	return v => {
+		try {
+			return e(v);
+		} catch (x) {
+			translated(x, start, context);
+		}
+	};
 };
 
 // One `#if`/`#elif` link: parse its branch, then recurse on the chain tail.
 let branch = cond => {
 	const then = parse(['#elif', '#else', '/if']);
-	const els = last.startsWith('#elif ') ? [branch(cp(last.slice(6)))]
-		: last === '#else' ? parse(['/if'])
-		: [];
+	const tag = last[1];
+	let els = [];
+	if (tag.startsWith('#elif ')) els = [branch(cp(tag.slice(6), last[6] + 6, snap()))];
+	else if (tag === '#else') {
+		els = parse(['/if']);
+		last[1] === '/if' || unexpected(last);
+	} else if (tag !== '/if') unexpected(last);
 	return v => run(cond(v) ? then : els, v);
 };
 
@@ -76,18 +124,27 @@ let parse = stops => {
 		if (!t[0]) {
 			nodes.push((s => () => s)(tag));
 		} else if (t[0] === 1) {
-			nodes.push(interp(tag, String));
+			nodes.push(interp(t, String));
 		} else if (stops.includes(tag.split(' ')[0])) {
-			last = tag;
+			last = t;
 			return nodes;
 		} else if (tag[0] === '!') {
 			// comment
 		} else if (tag.startsWith('#if ')) {
-			nodes.push(branch(cp(tag.slice(4))));
-		} else if (tag.startsWith('#each ')) {
-			const m = /^#each ([\s\S]+) as (\w+)(?:\s*,\s*(\w+))?$/.exec(tag) || err('Bad {{' + tag + '}}');
-			const list = cp(m[1]), name = m[2], idx = m[3];
-			if (BLOCKED.test(name) || idx && BLOCKED.test(idx)) err('Bad {{' + tag + '}}');
+			blocks.push(opener('if', t));
+			nodes.push(branch(cp(tag.slice(4), t[6] + 4, snap())));
+			blocks.pop();
+		} else if (/^#each(?:\s|$)/.test(tag)) {
+			blocks.push(opener('each', t));
+			const m = /^#each ([\s\S]+) as ((\w+)(?:\s*,\s*(\w+))?)$/.exec(tag);
+			m || fault('Bad {{' + tag + '}}', 'SJABLOON_EACH_SYNTAX', t);
+			const name = m[3], idx = m[4], at = t[6] + tag.length - m[2].length;
+			if (BLOCKED.test(name)) fault('Bad {{' + tag + '}}', 'SJABLOON_BLOCKED_BINDING', t, at, at + name.length);
+			if (idx && BLOCKED.test(idx)) {
+				const p = t[6] + tag.length - idx.length;
+				fault('Bad {{' + tag + '}}', 'SJABLOON_BLOCKED_BINDING', t, p, p + idx.length);
+			}
+			const list = cp(m[1], t[6] + 6, snap());
 			// `name`, `idx`, and `loop` are engine-bound inside the body, so
 			// exclude them from names there and restore outer bindings after.
 			const mark = bound.length;
@@ -96,7 +153,12 @@ let parse = stops => {
 			bound.push('loop');
 			const body = parse(['#else', '/each']);
 			bound.length = mark;
-			const empty = last === '#else' ? parse(['/each']) : [];
+			let empty = [];
+			if (last[1] === '#else') {
+				empty = parse(['/each']);
+				last[1] === '/each' || unexpected(last);
+			} else if (last[1] !== '/each') unexpected(last);
+			blocks.pop();
 			// Child scopes inherit the parent via the prototype chain, so outer
 			// variables stay visible inside the loop body. `@` re-points to the
 			// current item at each level, `$` (root) rides the chain, and `loop`
@@ -115,13 +177,15 @@ let parse = stops => {
 					return run(body, s);
 				}).join('');
 			});
-		} else if (tag[0] === '#' || tag[0] === '/') {
-			err('Unexpected {{' + tag + '}}');
+		} else if (/^#(?:if|elif|else)(?:\s|$)/.test(tag) || tag[0] === '/') {
+			unexpected(t);
+		} else if (tag[0] === '#') {
+			fault('Unknown {{' + tag + '}}', 'SJABLOON_UNKNOWN_BLOCK', t);
 		} else {
-			nodes.push(interp(tag, esc));
+			nodes.push(interp(t, esc));
 		}
 	}
-	stops.length && err('Missing {{' + stops[stops.length - 1] + '}}');
+	stops.length && fault('Missing {{' + stops[stops.length - 1] + '}}', 'SJABLOON_UNCLOSED_BLOCK');
 	return nodes;
 };
 
@@ -155,7 +219,9 @@ export function template(str, funcs) {
 	bound = ['$', '@'];
 	nms = new Set();
 	fnms = new Set();
-	toks = lex(String(str));
+	src = String(str);
+	blocks = [];
+	toks = lex(src);
 	i = 0;
 	const nodes = parse([]);
 	// Wrap the values in a root scope carrying the anchors, without mutating

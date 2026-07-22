@@ -1,3 +1,21 @@
+export interface DiagnosticBlock {
+    readonly type: 'if' | 'each';
+    readonly start: number;
+    readonly end: number;
+}
+
+export interface Diagnostic extends Error {
+    code: string;
+    start: number;
+    end: number;
+    readonly blocks: readonly DiagnosticBlock[];
+}
+
+/**
+ * Check whether an error was produced or translated by this sjabloon module instance.
+ */
+export function isDiagnostic(error: unknown): error is Diagnostic;
+
 /**
  * Compile a template once, render it many times.
  *
