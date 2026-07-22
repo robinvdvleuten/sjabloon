@@ -115,7 +115,7 @@ Here the loop variable `company` shadows the root's for a bare name, but `$.comp
 
 sjabloon works under `script-src 'self'` with no `unsafe-eval`. Templates parse into a tree of closures that call other closures; xprsn compiles the expressions the same way. The test suite runs under `node --disallow-code-generation-from-strings`, which throws on any string-to-code construct exactly like a strict CSP does.
 
-This is the practical difference from engines like Handlebars (without precompilation) or tempura, which generate a JavaScript function per template and therefore need `unsafe-eval` at runtime. If you can precompile templates at build time, those engines are great and fast. If templates arrive at runtime (user-edited templates, CMS content, email templates) and your CSP is strict, sjabloon fits.
+That runtime CSP support costs some render speed. Handlebars and tempura generate specialized JavaScript, so their compiled renderers are faster but runtime compilation requires `unsafe-eval`. Build-time precompilation avoids that restriction when templates are known in advance. If templates arrive at runtime (user-edited templates, CMS content, email templates) and your CSP is strict, sjabloon fits. See the [comparison benchmarks](bench/comparison/) for cold-compile and hot-render comparisons.
 
 ## Safety
 
