@@ -68,8 +68,8 @@ let fault = (msg, code, t, start = t?.[2] ?? src.length, end = t?.[3] ?? src.len
 	e.end = end;
 	throw attach(e, snap());
 };
-let translated = (e, start, context) => {
-	if (!isXprsnDiagnostic(e)) throw e;
+let translated = (e, start, context, owns = isXprsnDiagnostic) => {
+	if (!owns(e)) throw e;
 	e.start += start;
 	e.end += start;
 	throw attach(e, context);
@@ -99,7 +99,7 @@ let cp = (s, start, context) => {
 		try {
 			return e(v);
 		} catch (x) {
-			translated(x, start, context);
+			translated(x, start, context, e.isDiagnostic);
 		}
 	};
 };

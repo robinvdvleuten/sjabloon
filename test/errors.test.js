@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { compile } from 'xprsn';
 import { isDiagnostic, template } from '../src/index.js';
 
 let caught = fn => {
@@ -139,6 +140,28 @@ test('host errors and exact metadata spoofs pass through unchanged', () => {
 	const values = { get value() { throw getter } };
 	assert.equal(caught(() => template('{{ value }}')(values)), getter);
 	assert.equal(isDiagnostic(getter), false);
+});
+
+test('authentic xprsn errors from host boundaries pass through unchanged', () => {
+	const compileError = caught(() => compile('1 +'));
+	const foreign = compile('a.b');
+	const runtimeError = caught(() => foreign({ a: null }));
+	const cases = [
+		[template('{{ boom() }}', { boom: () => { throw compileError } }), {}],
+		[template('{{ boom() }}', { boom: () => foreign({ a: null }) }), {}],
+		[template('{{ a.b }}'), { a: { get b() { throw runtimeError } } }],
+		[template('{{ a.m() }}'), { a: { m() { throw runtimeError } } }],
+		[template('{{ a ~ "" }}'), { a: { [Symbol.toPrimitive]() { throw runtimeError } } }],
+	];
+
+	for (const [render, values] of cases) {
+		const e = caught(() => render(values));
+		assert.ok(e === compileError || foreign.isDiagnostic(e));
+		assert.equal(isDiagnostic(e), false);
+		assert.equal(Object.hasOwn(e, 'blocks'), false);
+	}
+	assert.deepStrictEqual([compileError.start, compileError.end], [3, 3]);
+	assert.deepStrictEqual([runtimeError.start, runtimeError.end], [2, 3]);
 });
 
 test('unauthenticated expression errors pass through without template context', () => {
