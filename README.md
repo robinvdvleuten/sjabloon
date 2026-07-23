@@ -122,6 +122,7 @@ That runtime CSP support costs some render speed. Handlebars and tempura generat
 - `{{ expr }}` escapes `& < > " '` by default; unescaped output requires the explicit `{{{ }}}` form.
 - Expressions inherit all of xprsn's guards: no `__proto__`/`constructor`/`prototype` access, null-prototype hash literals, and functions resolved only from your registry.
 - Templates read your values; they cannot assign to them.
+- Registered functions are host-provided capabilities, not a sandbox boundary. Only register helpers that template authors are allowed to invoke; likewise, treat explicit raw output as trusted HTML.
 
 ## Environments
 

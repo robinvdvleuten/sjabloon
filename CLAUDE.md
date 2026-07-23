@@ -4,10 +4,11 @@ Tiny, CSP-safe template engine powered by xprsn expressions. Zero-config sibling
 
 ## Commands
 
-- `npm test` — Node test suites under `node --disallow-code-generation-from-strings` (strict-CSP simulation).
+- `npm test` — Node's built-in test runner under `--disallow-code-generation-from-strings` (strict-CSP simulation), then `npm run test:types` (a smoke check that `index.d.ts` is usable, in `test/types.check.ts`). Keep this on Node: Bun accepts that V8 flag but does not enforce it.
 - `npm run build` — tsdown (rolldown + oxc), configured in `tsdown.config.js` → `dist/` (ESM/CJS targeting ES2024). Type generation is off; `index.d.ts` is hand-written. `xprsn` stays external (a runtime dependency, not bundled).
 - `npm run size` — size-limit checks the gzip size of `dist/index.js` and `dist/index.cjs` against the budgets in `package.json`.
-- Run a single suite: `node --test --test-concurrency=1 test/render.test.js`
+- `npm run test:browser` — builds the package and runs the browser bundle in Playwright Chromium under a strict CSP.
+- Run a single suite: `node --disallow-code-generation-from-strings --test test/render.test.js`
 - `npm run bench` — zero-dependency micro-benchmarks in `bench/`, run against `src/`. Measures template compile and render throughput separately (compile-once, render-many). `bench/` is not in `files`, so it is never published.
 - `npm run fuzz` — jazzer.js discovery (60s/target) over `compile`, `render`, `structured` targets in `fuzz/`, run against `src/` under `--disallow-code-generation-from-strings`. `npm run fuzz:regression` replays the committed `fuzz/corpus/*` deterministically (the CI gate); `.fuzz-corpus/` is the private, gitignored discovery corpus. See the `fuzz-testing` skill in `.claude/skills/`. `fuzz/` is not in `files`, so it is never published.
 
@@ -26,6 +27,10 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 3. **All expression evaluation goes through xprsn's public API** (`compile` from the `xprsn` package). Never reimplement or inline expression parsing here — the `get()` security guard lives in xprsn and must stay single-sourced.
 4. Size is a soft goal (~1.1KB min+gzip on top of xprsn). Lukeed-style terse code, but never trade escaping, a guard, or a passing test for bytes.
 
+## Omakase pragmatism
+
+Apply this across the whole project: implementation, API design, tests, documentation, dependencies, and tooling. Prefer cohesive defaults and one obvious path over knobs, abstraction, or infrastructure. Test the guarantee users rely on directly, and add complexity only when concrete pressure justifies it. These preferences never weaken the hard safety constraints.
+
 ## Semantics to preserve
 
 - `null`/`undefined` interpolate as empty strings (template-friendly, unlike raw xprsn).
@@ -40,8 +45,8 @@ Parser state (`toks`, `i`, `fns`, `last`) is module-level and shared; parsing is
 
 ## Conventions
 
-- Tabs for indentation. Tests in `test/*.test.js` (`render`, `errors`, `safety` suites).
+- Tabs for indentation. Tests use `node:test`, live in `test/*.test.js`, and run directly against `src/` (no build needed). Use the matching `render`, `errors`, or `safety` suite.
 - Do not mention Symfony in code, comments, or docs.
 - Runtime support is Node.js 22+ through ESM/CJS and ES2024 browser environments through a standards-based ESM bundler. There is no direct-script global or UMD build.
 - Suggested commit messages must follow Conventional Commits and be at most 80 characters.
-- `dist/` is gitignored build output. `index.d.ts` is **hand-written** (bundler type generation is off via `dts: false` in `tsdown.config.js`) — keep it in sync with the JSDoc in `src/index.js` by hand.
+- `dist/` is gitignored build output. `index.d.ts` is **hand-written** (bundler type generation is off via `dts: false` in `tsdown.config.js`) — keep it in sync with the JSDoc in `src/index.js` by hand. `test/types.check.ts` (run by `npm run test:types`, part of `npm test`) is a smoke check that the declarations are usable.
