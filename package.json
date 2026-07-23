@@ -43,6 +43,7 @@
 		"bench": "node --disallow-code-generation-from-strings bench/index.js",
 		"bench:comparison": "npm run build && npm --prefix bench/comparison run bench",
 		"build": "tsdown",
+		"check": "run-s build size test fuzz:regression test:browser",
 		"fuzz": "npm run fuzz:prepare && run-s fuzz:compile fuzz:render fuzz:structured",
 		"fuzz:prepare": "node -e \"for (const x of ['compile','render','structured']) require('fs').mkdirSync('.fuzz-corpus/'+x,{recursive:true})\"",
 		"fuzz:compile": "NODE_OPTIONS=--disallow-code-generation-from-strings jazzer fuzz/compile.fuzz.js -i src/ --customHooks fuzz/hooks.js --disableBugDetectors='command-injection|path-traversal|ssrf' --sync .fuzz-corpus/compile fuzz/corpus/compile -- -max_total_time=60 -use_value_profile=1 -dict=fuzz/sjabloon.dict -artifact_prefix=fuzz/",
