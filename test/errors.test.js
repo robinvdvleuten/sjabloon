@@ -208,3 +208,24 @@ test('bad expressions retain their existing messages and types', () => {
 	assert.throws(() => template('{{ nope(1) }}'), /nope is not a function/);
 	assert.throws(() => template('{{#if 1 + }}x{{/if}}'), SyntaxError);
 });
+
+test('deeply nested blocks surface as a typed SyntaxError, not a stack overflow', () => {
+	const n = 20000;
+	const deep = '{{#if a}}'.repeat(n) + 'x' + '{{/if}}'.repeat(n);
+	const e = caught(() => template(deep));
+	assert.ok(e instanceof SyntaxError, 'a SyntaxError, not a RangeError');
+	assert.strictEqual(e.code, 'SJABLOON_TOO_DEEP');
+	assert.strictEqual(e.start, 256 * 9, 'located at the opener that crossed the cap');
+	assert.strictEqual(e.end, 256 * 9 + 9);
+	assert.strictEqual(e.blocks.length, 256, 'context carries the open chain');
+	assert.ok(isDiagnostic(e), 'authenticated as a sjabloon diagnostic');
+});
+
+test('runaway elif chains stay a typed SyntaxError through the overflow backstop', () => {
+	const n = 100000;
+	const deep = '{{#if a}}' + '{{#elif a}}'.repeat(n) + '{{/if}}';
+	const e = caught(() => template(deep));
+	assert.ok(e instanceof SyntaxError, 'a SyntaxError, not a RangeError');
+	assert.ok(/_TOO_DEEP$/.test(e.code), 'a typed too-deep code');
+	assert.ok(isDiagnostic(e), 'authenticated as a sjabloon diagnostic');
+});

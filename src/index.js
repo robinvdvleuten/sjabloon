@@ -55,7 +55,13 @@ let lex = s => {
 let toks, i, fns, last, bound, nms, fnms, src, blocks;
 
 let snap = () => Object.freeze(blocks.slice());
-let opener = (type, t) => Object.freeze({ type, start: t[2], end: t[3] });
+// Block nesting is capped so a pathological template fails as a deterministic
+// SyntaxError at the offending opener, far below the native stack limit.
+const DEPTH = 256;
+let opener = (type, t) => {
+	blocks.length < DEPTH || fault('Template too deeply nested', 'SJABLOON_TOO_DEEP', t);
+	return Object.freeze({ type, start: t[2], end: t[3] });
+};
 let attach = (e, context) => {
 	Object.defineProperty(e, 'blocks', { value: context, enumerable: true });
 	mark(e);
@@ -223,7 +229,16 @@ export function template(str, funcs) {
 	blocks = [];
 	toks = lex(src);
 	i = 0;
-	const nodes = parse([]);
+	// Deeply nested blocks overflow the recursive-descent parser; surface that
+	// as a SyntaxError so malformed input keeps its documented compile-time
+	// contract (mirroring xprsn's XPRSN_TOO_DEEP for expressions).
+	let nodes;
+	try {
+		nodes = parse([]);
+	} catch (x) {
+		if (x instanceof RangeError) fault('Template too deeply nested', 'SJABLOON_TOO_DEEP', null, 0, src.length);
+		throw x;
+	}
 	// Wrap the values in a root scope carrying the anchors, without mutating
 	// what the caller passed: by default `$` and `@` both point at the root.
 	// An embedder can override the anchors with a `{ root, item }` second arg:
