@@ -44,9 +44,16 @@ export function isDiagnostic(error: unknown): error is SjabloonDiagnostic;
  * `root` and `@` becomes `item` (two distinct objects). Omit `item` to leave
  * `@` unbound, so reading `@.x` throws through xprsn's guard.
  *
+ * The renderer also exposes `withRaw(values, scope)`: one render, both channels.
+ * It returns `{ text, raws }` — the rendered string plus each interpolation's
+ * pre-escape, pre-stringify value (`{{ }}` and `{{{ }}}` alike, nullish
+ * included), in render order: loop bodies push once per iteration, untaken
+ * branches push nothing. Block expressions (`#if` conditions, `#each`
+ * collections) are never captured.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
- * @returns {{(values?: Record<string, any>, scope?: { root?: any, item?: any }): string, names: string[], functions: string[]}} Renderer for the compiled template.
+ * @returns {{(values?: Record<string, any>, scope?: { root?: any, item?: any }): string, withRaw: (values?: Record<string, any>, scope?: { root?: any, item?: any }) => { text: string, raws: unknown[] }, names: string[], functions: string[]}} Renderer for the compiled template.
  * @throws {SyntaxError} On malformed tags, unclosed blocks, or bad expressions.
  */
 export function template(str: string, funcs?: Record<string, Function>): {
@@ -54,6 +61,13 @@ export function template(str: string, funcs?: Record<string, Function>): {
         root?: any;
         item?: any;
     }): string;
+    withRaw(values?: Record<string, any>, scope?: {
+        root?: any;
+        item?: any;
+    }): {
+        text: string;
+        raws: unknown[];
+    };
     names: string[];
     functions: string[];
 };

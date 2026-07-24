@@ -47,6 +47,13 @@ tpl(base, { root: reportRoot, item: currentRow }); // $ = reportRoot, @ = curren
 tpl(base, { root: reportRoot });                   // no item → @.x throws
 ```
 
+The renderer's `withRaw(values?, scope?)` method renders once and returns both channels: `{ text, raws }` — the rendered string plus each interpolation's pre-escape, pre-stringify value, whatever the expression evaluated to before it became output text. A `{{ total }}` holding `1000` yields the number `1000`, not the string `"1000"` — the whole point for typed consumers like spreadsheet cells. Both `{{ }}` and `{{{ }}}` are captured, nullish included, in render order (loop bodies once per iteration, untaken branches never). Block expressions — `#if` conditions, `#each` collections — are not interpolations and are never captured.
+
+```js
+const cell = template('{{ total * 1.21 }}');
+cell.withRaw({ total: 1000 }); // => { text: '1210', raws: [1210] } — still a number
+```
+
 The renderer also carries `names` (every variable the template reads from your values, loop variables excluded) and `functions` (the registry functions it calls, methods excluded), both deduplicated. Check a stored template against your data model and its allowed functions before you render it, or fetch only the fields it needs.
 
 ```js

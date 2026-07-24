@@ -54,6 +54,11 @@ let lex = s => {
 // `nms` collects free variables, `fnms` the registry functions called.
 let toks, i, fns, last, bound, nms, fnms, src, blocks;
 
+// The opt-in raw-value collector rides the render's root scope under a
+// symbol: invisible to expressions, inherited by `#each` child scopes, and
+// naturally per render, so re-entrant renders each collect into their own.
+const RAWS = Symbol();
+
 let snap = () => Object.freeze(blocks.slice());
 // Block nesting is capped so a pathological template fails as a deterministic
 // SyntaxError at the offending opener, far below the native stack limit.
@@ -86,8 +91,9 @@ let unexpected = t => fault('Unexpected {{' + t[1] + '}}', 'SJABLOON_UNEXPECTED_
 let run = (nodes, v) => nodes.map(n => n(v)).join('');
 
 // A leaf interpolation node: compile `src`, render nullish as '', apply `wrap`
-// (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form).
-let interp = (t, wrap) => (e => v => wrap(e(v) ?? ''))(cp(t[1], t[4], snap()));
+// (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form). The pre-stringify
+// result feeds the opt-in `raws` collector; block expressions never do.
+let interp = (t, wrap) => (e => (v, x) => (x = e(v), v[RAWS]?.push(x), wrap(x ?? '')))(cp(t[1], t[4], snap()));
 
 // Compile one expression and collect its free variables (minus the loop
 // variables currently in scope, which belong to the template) and the registry
@@ -213,9 +219,16 @@ let parse = stops => {
  * `root` and `@` becomes `item` (two distinct objects). Omit `item` to leave
  * `@` unbound, so reading `@.x` throws through xprsn's guard.
  *
+ * The renderer also exposes `withRaw(values, scope)`: one render, both channels.
+ * It returns `{ text, raws }` — the rendered string plus each interpolation's
+ * pre-escape, pre-stringify value (`{{ }}` and `{{{ }}}` alike, nullish
+ * included), in render order: loop bodies push once per iteration, untaken
+ * branches push nothing. Block expressions (`#if` conditions, `#each`
+ * collections) are never captured.
+ *
  * @param {string} str The template, e.g. `'Hello {{ user.name }}!'`.
  * @param {Record<string, Function>} [funcs] Functions callable inside expressions.
- * @returns {{(values?: Record<string, any>, scope?: { root?: any, item?: any }): string, names: string[], functions: string[]}} Renderer for the compiled template.
+ * @returns {{(values?: Record<string, any>, scope?: { root?: any, item?: any }): string, withRaw: (values?: Record<string, any>, scope?: { root?: any, item?: any }) => { text: string, raws: unknown[] }, names: string[], functions: string[]}} Renderer for the compiled template.
  * @throws {SyntaxError} On malformed tags, unclosed blocks, or bad expressions.
  */
 export function template(str, funcs) {
@@ -246,14 +259,18 @@ export function template(str, funcs) {
 	// `$` = root, `@` = item (distinct objects). Omitting `item` leaves `@`
 	// unbound, so `@.x` throws through xprsn's guard — a group-header band that
 	// has no current row wants exactly that.
-	const f = (v, o) => {
+	const g = (v, o, w) => {
 		v = v || {};
 		const r = Object.create(v);
 		r['$'] = o ? o.root : v;
 		if (!o) r['@'] = v;
 		else if ('item' in o) r['@'] = o.item;
+		r[RAWS] = w;
 		return run(nodes, r);
 	};
+	const f = (v, o) => g(v, o);
+	// One render, both channels: the rendered string plus the ordered raws.
+	f.withRaw = (v, o, w = []) => ({ text: g(v, o, w), raws: w });
 	// Array.from, not a spread: the bundler's transpile turns `[...set]` into
 	// `[].concat(set)`, which wraps the Set instead of unpacking it.
 	f.names = Array.from(nms);

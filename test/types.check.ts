@@ -10,6 +10,10 @@ const render = template('{{ user.name }}');
 const output: string = render({ user: { name: 'Robin' } });
 const names: string[] = render.names;
 
+const collected: { text: string; raws: unknown[] } = render.withRaw({ user: { name: 'Robin' } });
+const anchored: { text: string; raws: unknown[] } = render.withRaw({}, { root: { user: { name: 'R' } }, item: {} });
+void [collected, anchored];
+
 try {
 	render();
 } catch (error: unknown) {

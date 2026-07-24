@@ -20,6 +20,10 @@ export function renderSafe(src, values, funcs) {
 	let render;
 	try { render = template(src, funcs); }
 	catch (e) { if (!isCompileErr(e)) throw e; return; }
-	try { render(values); }
-	catch (e) { if (!isRenderErr(e)) throw e; }
+	let out;
+	try { out = render(values); }
+	catch (e) { if (!isRenderErr(e)) throw e; return; }
+	// Differential check: withRaw() must render the same string as a plain call,
+	// and a successful plain render must stay successful through it.
+	if (render.withRaw(values).text !== out) throw new Error('withRaw() changed the rendered output');
 }

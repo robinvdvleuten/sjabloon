@@ -259,3 +259,68 @@ test('full template', () => {
 	);
 	assert.strictEqual(out, '<h1>Robin</h1><ul><li>Koffie: 16 (2x)</li><li>Thee: 3</li></ul><p>€4.95</p>');
 });
+
+test('withRaw() returns the rendered string plus pre-escape values in render order', () => {
+	const tpl = template('{{ fmt(total) }}', { fmt: n => '$' + n.toFixed(2) });
+	const { text, raws } = tpl.withRaw({ total: 1000 });
+	assert.strictEqual(text, '$1000.00');
+	assert.deepStrictEqual(raws, ['$1000.00'], 'the dominant single-interpolation case is raws[0]');
+
+	const both = template('{{ html }}/{{{ html }}}').withRaw({ html: '<b>' });
+	assert.strictEqual(both.text, '&lt;b&gt;/<b>');
+	assert.deepStrictEqual(both.raws, ['<b>', '<b>'], 'pre-escape for {{ }} and {{{ }}} alike');
+
+	const typed = template('{{ n }}{{ d }}{{ o }}').withRaw({ n: 1000, d: null, o: { a: 1 } }).raws;
+	assert.strictEqual(typed[0], 1000, 'numbers stay numbers');
+	assert.strictEqual(typed[1], null, 'nullish is captured as-is, not the empty string it renders as');
+	assert.deepStrictEqual(typed[2], { a: 1 }, 'objects pass through untouched');
+});
+
+test('withRaw() follows blocks: per iteration, taken branches only, never block expressions', () => {
+	assert.deepStrictEqual(
+		template('{{#each items as it}}{{ it * 2 }}{{/each}}').withRaw({ items: [1, 2, 3] }).raws,
+		[2, 4, 6],
+		'loop bodies push once per iteration; the collection itself is not captured'
+	);
+	assert.deepStrictEqual(
+		template('{{#if ok}}{{ a }}{{#else}}{{ b }}{{/if}}').withRaw({ ok: true, a: 'A', b: 'B' }).raws,
+		['A'],
+		'untaken branches push nothing; the condition is not captured'
+	);
+	assert.deepStrictEqual(
+		template('{{#each items as it}}{{ it }}{{#else}}{{ fallback }}{{/each}}').withRaw({ items: [], fallback: 'none' }).raws,
+		['none'],
+		'the #each else branch captures when it renders'
+	);
+});
+
+test('withRaw() is per call and safe across re-entrancy', () => {
+	const tpl = template('{{ a }}');
+	const first = tpl.withRaw({ a: 1 });
+	tpl({ a: 2 });
+	const second = tpl.withRaw({ a: 3 });
+	assert.deepStrictEqual(first.raws, [1], 'a plain render between calls does not leak anywhere');
+	assert.deepStrictEqual(second.raws, [3], 'every withRaw() call fills a fresh array');
+
+	const inner = template('{{ x }}');
+	const innerResults = [];
+	const funcs = {
+		plain: v => inner({ x: v * 10 }),
+		collecting: v => { const r = inner.withRaw({ x: v * 10 }); innerResults.push(r.raws); return r.text; },
+		throwing: () => { try { inner.withRaw({}); } catch { } return 'ok'; },
+	};
+	const outer = template('{{ plain(a) }}{{ collecting(a) }}{{ throwing() }}{{ a }}', funcs).withRaw({ a: 7 });
+	assert.strictEqual(outer.text, '7070ok7');
+	assert.deepStrictEqual(outer.raws, ['70', '70', 'ok', 7], 'inner renders never pollute the outer collector');
+	assert.deepStrictEqual(innerResults, [[70]], 'an inner withRaw() call only sees its own render, throwing included');
+});
+
+test('withRaw() composes with the scope anchors', () => {
+	const plain = template('{{ $.a }}/{{ @.a }}').withRaw({ a: 'V' });
+	assert.strictEqual(plain.text, 'V/V', 'no scope arg keeps the default anchors');
+	assert.deepStrictEqual(plain.raws, ['V', 'V']);
+
+	const anchored = template('{{ $.a }}{{ @.n }}').withRaw({}, { root: { a: 'R' }, item: { n: 1 } });
+	assert.strictEqual(anchored.text, 'R1', 'withRaw() rides along with a { root, item } override');
+	assert.deepStrictEqual(anchored.raws, ['R', 1]);
+});
