@@ -40,7 +40,7 @@ let lex = s => {
 		const r = b > p && s[b - 1] === '-';
 		const q = r ? b - 1 : b, whole = s.slice(p, q), body = whole.trim();
 		const start = p + whole.length - whole.trimStart().length, end = b + 2 + raw;
-		const t = [raw ? 1 : 2, body, a, end, p, q, start, start + body.length, l, r];
+		const t = [raw ? 1 : 2, body, a, end, start];
 		const prev = out.at(-1);
 		if (l && prev?.[0] === 0 && prev[1]) prev[1] = prev[1].trimEnd();
 		out.push(t);
@@ -87,7 +87,7 @@ let run = (nodes, v) => nodes.map(n => n(v)).join('');
 
 // A leaf interpolation node: compile `src`, render nullish as '', apply `wrap`
 // (`esc` for `{{ }}`, `String` for the raw `{{{ }}}` form).
-let interp = (t, wrap) => (e => v => wrap(e(v) ?? ''))(cp(t[1], t[6], snap()));
+let interp = (t, wrap) => (e => v => wrap(e(v) ?? ''))(cp(t[1], t[4], snap()));
 
 // Compile one expression and collect its free variables (minus the loop
 // variables currently in scope, which belong to the template) and the registry
@@ -115,7 +115,7 @@ let branch = cond => {
 	const then = parse(['#elif', '#else', '/if']);
 	const tag = last[1];
 	let els = [];
-	if (tag.startsWith('#elif ')) els = [branch(cp(tag.slice(6), last[6] + 6, snap()))];
+	if (tag.startsWith('#elif ')) els = [branch(cp(tag.slice(6), last[4] + 6, snap()))];
 	else if (tag === '#else') {
 		els = parse(['/if']);
 		last[1] === '/if' || unexpected(last);
@@ -138,19 +138,19 @@ let parse = stops => {
 			// comment
 		} else if (tag.startsWith('#if ')) {
 			blocks.push(opener('if', t));
-			nodes.push(branch(cp(tag.slice(4), t[6] + 4, snap())));
+			nodes.push(branch(cp(tag.slice(4), t[4] + 4, snap())));
 			blocks.pop();
 		} else if (/^#each(?:\s|$)/.test(tag)) {
 			blocks.push(opener('each', t));
 			const m = /^#each ([\s\S]+) as ((\w+)(?:\s*,\s*(\w+))?)$/.exec(tag);
 			m || fault('Bad {{' + tag + '}}', 'SJABLOON_EACH_SYNTAX', t);
-			const name = m[3], idx = m[4], at = t[6] + tag.length - m[2].length;
+			const name = m[3], idx = m[4], at = t[4] + tag.length - m[2].length;
 			if (BLOCKED.test(name)) fault('Bad {{' + tag + '}}', 'SJABLOON_BLOCKED_BINDING', t, at, at + name.length);
 			if (idx && BLOCKED.test(idx)) {
-				const p = t[6] + tag.length - idx.length;
+				const p = t[4] + tag.length - idx.length;
 				fault('Bad {{' + tag + '}}', 'SJABLOON_BLOCKED_BINDING', t, p, p + idx.length);
 			}
-			const list = cp(m[1], t[6] + 6, snap());
+			const list = cp(m[1], t[4] + 6, snap());
 			// `name`, `idx`, and `loop` are engine-bound inside the body, so
 			// exclude them from names there and restore outer bindings after.
 			const mark = bound.length;
@@ -236,7 +236,8 @@ export function template(str, funcs) {
 	try {
 		nodes = parse([]);
 	} catch (x) {
-		if (x instanceof RangeError) fault('Template too deeply nested', 'SJABLOON_TOO_DEEP', null, 0, src.length);
+		// An empty span at the end, like an unclosed block.
+		if (x instanceof RangeError) fault('Template too deeply nested', 'SJABLOON_TOO_DEEP');
 		throw x;
 	}
 	// Wrap the values in a root scope carrying the anchors, without mutating
