@@ -2,7 +2,7 @@
 	"name": "sjabloon",
 	"version": "0.5.1",
 	"description": "Tiny, CSP-safe template engine for JavaScript, powered by xprsn expressions. No eval, no new Function.",
-	"repository": "robinvdvleuten/sjabloon",
+	"repository": "getquario/sjabloon",
 	"license": "MIT",
 	"author": {
 		"name": "Robin van der Vleuten",

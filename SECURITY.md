@@ -26,7 +26,7 @@ Treat templates as code. Keep user input out of template syntax and pass it thro
 
 Do not open a public GitHub issue for a security vulnerability.
 
-Use [GitHub's private vulnerability form](https://github.com/robinvdvleuten/sjabloon/security/advisories/new).
+Use [GitHub's private vulnerability form](https://github.com/getquario/sjabloon/security/advisories/new).
 
 Include the affected code, its impact, and steps that reproduce the issue. Tell us whether and how to credit you.
 

@@ -3,9 +3,9 @@
 A tiny, CSP-safe template engine for JavaScript. **~1.8KB min+gzip (~3.6KB with [xprsn](https://www.npmjs.com/package/xprsn)), one dependency.**
 
 [![NPM version](https://img.shields.io/npm/v/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
-[![Build Status](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml/badge.svg)](https://github.com/robinvdvleuten/sjabloon/actions/workflows/test.yml)
+[![Build Status](https://github.com/getquario/sjabloon/actions/workflows/test.yml/badge.svg)](https://github.com/getquario/sjabloon/actions/workflows/test.yml)
 [![NPM downloads](https://img.shields.io/npm/dm/sjabloon.svg)](https://www.npmjs.com/package/sjabloon)
-[![MIT license](https://img.shields.io/github/license/robinvdvleuten/sjabloon.svg)](https://github.com/robinvdvleuten/sjabloon/blob/main/LICENSE)
+[![MIT license](https://img.shields.io/github/license/getquario/sjabloon.svg)](https://github.com/getquario/sjabloon/blob/main/LICENSE)
 
 <a href="https://webstronauts.com?utm_source=github&utm_medium=readme&utm_campaign=sjabloon">
 	<picture>
@@ -13,7 +13,7 @@ A tiny, CSP-safe template engine for JavaScript. **~1.8KB min+gzip (~3.6KB with 
 	</picture>
 </a>
 
-*Sjabloon* is Dutch for "template". It renders text templates with full [xprsn](https://github.com/robinvdvleuten/xprsn) expressions inside every tag, without turning template text into JavaScript. There is no `eval` and no `new Function`, so it runs under a strict Content Security Policy where engines that compile templates to code cannot.
+*Sjabloon* is Dutch for "template". It renders text templates with full [xprsn](https://github.com/getquario/xprsn) expressions inside every tag, without turning template text into JavaScript. There is no `eval` and no `new Function`, so it runs under a strict Content Security Policy where engines that compile templates to code cannot.
 
 ```js
 import { template, render } from 'sjabloon';
@@ -88,7 +88,7 @@ Use `isDiagnostic(error)` when a host needs to distinguish those errors. It retu
 | `{{! anything }}` | Comment, removed from output |
 | `{{- expr -}}` | A dash hugging either brace trims the whitespace on that side, newlines included; works on every tag form |
 
-Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
+Every `expr` is an [xprsn expression](https://github.com/getquario/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
 
 A loop body sees its loop variable plus the outer scope; reusing an outer name shadows it only inside that body. The engine keeps loop variables on a child scope, so the values you pass are never mutated.
 
