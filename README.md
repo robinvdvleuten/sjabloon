@@ -2,7 +2,7 @@
 
 A tiny template engine for JavaScript that renders familiar `{{ }}` templates — interpolation, `{{#if}}`, `{{#each}}` — without ever turning template text into JavaScript. There is no `eval` and no `new Function`, so a template that arrives at runtime, out of a database or a user's editor, still renders under a strict Content Security Policy, where engines that compile templates to code cannot.
 
-_Sjabloon_ is Dutch for "template". Every tag holds a full [xprsn](https://github.com/getquario/xprsn) expression, so conditions read like `{{#if total >= 100 and "vip" in user.roles}}` rather than needing a helper.
+_Sjabloon_ is Dutch for "template". Every tag holds a full [xprsn](https://github.com/robinvdvleuten/xprsn) expression, so conditions read like `{{#if total >= 100 and "vip" in user.roles}}` rather than needing a helper.
 
 - **Escapes by default.** In the HTML edition every interpolated value is escaped; `{{{ expr }}}` opts out for one you already trust.
 - **Three editions, one engine.** `sjabloon/html` and `sjabloon/text` return strings; the root entry returns a `Token[]` with values still in their original types — for output that isn't text at all, like a spreadsheet cell that needs the number `1000` and a cell format.
@@ -19,8 +19,6 @@ const greet = template("<p>Hello {{ name }}!</p>");
 greet({ name: "Robin" }); //=> '<p>Hello Robin!</p>'
 greet({ name: "<script>" }); //=> '<p>Hello &lt;script&gt;!</p>'
 ```
-
-<img src="https://getquario.com/favicon.svg" alt="Quario logo" width="16" height="16" /> <b>sjabloon</b> is built by the team behind <b><a href="https://getquario.com?utm_source=github&utm_medium=readme&utm_campaign=sjabloon">Quario</a></b>, a declarative reporting engine for JavaScript that renders JSON report definitions to <b>HTML, PDF, workbooks, and Word</b> — without <code>eval</code>.
 
 ## Contents
 
@@ -100,12 +98,12 @@ sjabloon renders a template against a values object. Templates can interpolate, 
 
 ## Related packages
 
-sjabloon is the template layer of a set that shares one approach — parse to closures, never to code — and whose only runtime dependencies are each other and [waarmerk](https://github.com/getquario/waarmerk), the located-diagnostic module they mint through:
+sjabloon is the template layer of a set that shares one approach — parse to closures, never to code — and whose only runtime dependencies are each other and [waarmerk](https://github.com/robinvdvleuten/waarmerk), the located-diagnostic module they mint through:
 
-- **[xprsn](https://github.com/getquario/xprsn)** — the expression language sjabloon runs inside every tag, usable on its own if you need to evaluate _one_ expression against data rather than render text. Its [syntax reference](https://github.com/getquario/xprsn#syntax) is the reference for everything between the braces here.
-- **[padvinder](https://github.com/getquario/padvinder)** — a JSONPath engine, if you need to _select nodes_ out of a document. Filter evaluation is the part of JSONPath that has produced real code-injection CVEs elsewhere; padvinder parses filters to closures with no route to code execution, and passes the full RFC 9535 compliance suite.
+- **[xprsn](https://github.com/robinvdvleuten/xprsn)** — the expression language sjabloon runs inside every tag, usable on its own if you need to evaluate _one_ expression against data rather than render text. Its [syntax reference](https://github.com/robinvdvleuten/xprsn#syntax) is the reference for everything between the braces here.
+- **[padvinder](https://github.com/robinvdvleuten/padvinder)** — a JSONPath engine, if you need to _select nodes_ out of a document. Filter evaluation is the part of JSONPath that has produced real code-injection CVEs elsewhere; padvinder parses filters to closures with no route to code execution, and passes the full RFC 9535 compliance suite.
 
-Outside that set, [werkmap](https://github.com/getquario/werkmap) is an `.xlsx` writer from the same team, if the token stream is headed for a spreadsheet: a token keeps its value's type, and werkmap writes it as a typed cell.
+Outside that set, [werkmap](https://github.com/robinvdvleuten/werkmap) is an `.xlsx` writer from the same team, if the token stream is headed for a spreadsheet: a token keeps its value's type, and werkmap writes it as a typed cell.
 
 ## Editions
 
@@ -139,7 +137,7 @@ Every edition exports `template`, `render`, `isDiagnostic`, and `relocate`. They
 | `{{! anything }}`                                     | Comment, removed from output                                                                              |
 | `{{- expr -}}`                                        | A dash hugging either brace trims the whitespace on that side, newlines included; works on every tag form |
 
-Every `expr` is an [xprsn expression](https://github.com/getquario/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
+Every `expr` is an [xprsn expression](https://github.com/robinvdvleuten/xprsn#syntax): literals, arithmetic, string concatenation with `~` (`{{ first ~ " " ~ last }}`), comparisons, `and`/`or`/`not`/`in`, ternaries, property and method access, and functions from the registry you pass in. `null` and `undefined` render as empty strings.
 
 A loop body sees its loop variable plus the outer scope; reusing an outer name shadows it only inside that body. The engine keeps loop variables on a child scope, so the values you pass are never mutated.
 
@@ -274,7 +272,7 @@ If you compile templates out of a larger document — a cell in a report, a fiel
 ## Contributing
 
 ```bash
-git clone https://github.com/getquario/sjabloon.git
+git clone https://github.com/robinvdvleuten/sjabloon.git
 cd sjabloon
 npm install
 git config core.hooksPath .githooks   # enable the commit-msg hook

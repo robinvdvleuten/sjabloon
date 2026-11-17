@@ -15,7 +15,7 @@
     "email": "robin@webstronauts.com",
     "url": "https://robinvdvleuten.nl"
   },
-  "repository": "getquario/sjabloon",
+  "repository": "robinvdvleuten/sjabloon",
   "files": [
     "lib",
     "EMBEDDING.md"

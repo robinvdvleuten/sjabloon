@@ -107,7 +107,7 @@ validators and editors.
 `options.bound` lists names your engine already has in scope — a loop variable, a
 handle, a `page` anchor. They are excluded from `names` and still resolve
 normally at render time, the same contract as
-[xprsn's own `bound`](https://github.com/getquario/xprsn/blob/main/EMBEDDING.md#optionsbound):
+[xprsn's own `bound`](https://github.com/robinvdvleuten/xprsn/blob/main/EMBEDDING.md#optionsbound):
 
 ```js
 template("{{ run.total }} of {{ count }}", undefined, { bound: ["run"] }).names;
@@ -135,7 +135,7 @@ template("{{ title }}: {{ total }}").reads;
 Each read also carries xprsn's `path` and `dynamic`: the literal member names
 after the root, and whether the expression reads further under them through a
 step the path cannot name. See xprsn's
-[`reads`](https://github.com/getquario/xprsn/blob/main/EMBEDDING.md#reads).
+[`reads`](https://github.com/robinvdvleuten/xprsn/blob/main/EMBEDDING.md#reads).
 
 Inside an `#each` block, `@` and the loop variable hold the current item. A read
 of either carries `each`, the root and static path of the collection the block
